@@ -301,7 +301,7 @@ export default function InstitutionDashboard() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Iniciar nova triagem"
-          onPress={() => navigation.navigate('ExamFlow', { screen: 'Anamnesis', params: {} })}
+          onPress={() => navigation.navigate('ExamFlow', { screen: 'SelectTestee' })}
         >
           <Box bg={INSTITUTION_ACCENT} borderRadius="$2xl" p="$6" alignItems="center" mb="$8">
             <PlusCircle size={40} color={colors.white} />

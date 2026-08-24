@@ -93,13 +93,11 @@ export const getDependents = async (): Promise<Dependent[]> => {
     const response = await api.get<DependentApiResponse[]>('/dependents');
     return response.data.map(mapDependent);
   } catch (error: any) {
-    if (!error.response || error.response?.status === 404) {
-      console.warn('Mocking getDependents (Backend missing or CORS block)');
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return [...mockDependents]; // Retorna cópia do estado em memória
-    }
-    console.error('Erro ao buscar dependentes:', error);
-    throw error;
+    // Protótipo: qualquer falha do backend cai no mock, para nunca travar a
+    // navegação entre telas.
+    console.warn('Mocking getDependents (Backend indisponível ou com erro)', error?.message);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return [...mockDependents]; // Retorna cópia do estado em memória
   }
 };
 
@@ -107,13 +105,8 @@ export const deleteDependent = async (id: string): Promise<void> => {
   try {
     await api.delete(`/dependents/${id}`);
   } catch (error: any) {
-    if (!error.response || error.response?.status === 404) {
-      console.warn('Mocking deleteDependent (Backend missing or CORS block)');
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      mockDependents = mockDependents.filter((d) => d.id !== id);
-      return;
-    }
-    console.error(`Erro ao deletar o dependente ${id}:`, error);
-    throw error;
+    console.warn('Mocking deleteDependent (Backend indisponível ou com erro)', error?.message);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    mockDependents = mockDependents.filter((d) => d.id !== id);
   }
 };

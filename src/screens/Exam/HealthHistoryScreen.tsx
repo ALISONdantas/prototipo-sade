@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,13 @@ import {
   TouchableOpacity,
   Animated,
   KeyboardAvoidingView,
-  Platform
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChevronLeft } from 'lucide-react-native';
 
 import { colors, spacing, typography } from '../../theme';
-import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { Toast } from '../../components/Toast';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -24,17 +23,16 @@ import { useConfirmExitOnBack } from '../../hooks/useConfirmExitOnBack';
 import { useToast } from '../../hooks/useToast';
 import { ExamStackParamList } from '../../navigation/ExamStack';
 
-type AnamnesisScreenRouteProp = RouteProp<ExamStackParamList, 'Anamnesis'>;
+type HealthHistoryRouteProp = RouteProp<ExamStackParamList, 'HealthHistory'>;
 type NavigationProp = NativeStackNavigationProp<ExamStackParamList>;
 
-export default function AnamnesisScreen() {
+export default function HealthHistoryScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<AnamnesisScreenRouteProp>();
-  const dependentId = route.params?.dependentId;
+  const route = useRoute<HealthHistoryRouteProp>();
+  const { dependentId, patientId, dependentName, age, sex } = route.params;
 
-  // Form State
-  const [age, setAge] = useState('');
-  const [sex, setSex] = useState<'M' | 'F' | ''>('');
+  // Form State — idade e sexo já vêm resolvidos da tela anterior
+  // (SelectTesteeScreen/PatientPickerScreen), não são mais digitados aqui.
   const [familyHistory, setFamilyHistory] = useState(false);
   const [hasPain, setHasPain] = useState<boolean | null>(null);
   const [hadSurgery, setHadSurgery] = useState(false);
@@ -43,7 +41,6 @@ export default function AnamnesisScreen() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(true);
   const { toast, showToast } = useToast();
 
-  // Animations
   const shakeAnimation = useRef(new Animated.Value(0)).current;
 
   const { isConfirmVisible, confirmExit, cancelExit } = useConfirmExitOnBack(hasUnsavedChanges);
@@ -53,30 +50,30 @@ export default function AnamnesisScreen() {
       Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: false }),
       Animated.timing(shakeAnimation, { toValue: -10, duration: 50, useNativeDriver: false }),
       Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: false }),
-      Animated.timing(shakeAnimation, { toValue: 0, duration: 50, useNativeDriver: false })
+      Animated.timing(shakeAnimation, { toValue: 0, duration: 50, useNativeDriver: false }),
     ]).start();
   };
 
   const handleNext = async () => {
-    if (!age || !sex || hasPain === null) {
+    if (hasPain === null) {
       triggerShake();
-      showToast('Preencha idade, sexo e se sente dor.', 'error');
+      showToast('Responda se a pessoa sente dor.', 'error');
       return;
     }
 
     try {
       const payload = {
-        age: parseInt(age, 10),
+        age,
         sex,
         family_history: familyHistory,
         has_pain: hasPain,
         had_surgery: hadSurgery,
-        dependent_id: dependentId
+        dependent_id: dependentId,
+        patient_id: patientId,
       };
 
       await createExam(payload);
 
-      // Allow navigation without prompt
       setHasUnsavedChanges(false);
       navigation.navigate('AdamsTutorial');
     } catch (error) {
@@ -113,55 +110,29 @@ export default function AnamnesisScreen() {
       </View>
 
       <View style={styles.progressContainer}>
-        <Text style={styles.progressText}>Passo 1 de 3: Anamnese</Text>
+        <Text style={styles.progressText}>Passo 2 de 3: Histórico de saúde</Text>
         <View style={styles.progressBarBackground}>
-          <View style={[styles.progressBarFill, { width: '33.33%' }]} />
+          <View style={[styles.progressBarFill, { width: '66.66%' }]} />
         </View>
       </View>
 
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
           <Animated.View style={{ transform: [{ translateX: shakeAnimation }] }}>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Informações básicas</Text>
-              
-              <View style={styles.row}>
-                <View style={styles.halfWidth}>
-                  <Input
-                    label="Idade"
-                    placeholder="Anos"
-                    keyboardType="numeric"
-                    value={age}
-                    onChangeText={setAge}
-                  />
-                </View>
-                
-                <View style={styles.halfWidth}>
-                  <Text style={styles.label}>Sexo Biol.</Text>
-                  <View style={styles.sexContainer}>
-                    <TouchableOpacity
-                      style={[styles.sexButton, sex === 'M' && styles.sexButtonActive]}
-                      onPress={() => setSex('M')}
-                    >
-                      <Text style={[styles.sexButtonText, sex === 'M' && styles.toggleTextActive]}>M</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.sexButton, sex === 'F' && styles.sexButtonActive]}
-                      onPress={() => setSex('F')}
-                    >
-                      <Text style={[styles.sexButtonText, sex === 'F' && styles.toggleTextActive]}>F</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
+              <Text style={styles.sectionTitle}>
+                {dependentName ? `Sobre ${dependentName}` : 'Sobre você'}
+              </Text>
+              <Text style={styles.subtitleText}>
+                Idade e sexo já foram obtidos do cadastro — só precisamos confirmar o histórico
+                de saúde abaixo.
+              </Text>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Histórico de saúde</Text>
-              
               <View style={styles.questionContainer}>
                 <Text style={styles.questionText}>Sente dor na coluna?</Text>
                 <View style={styles.togglesRow}>
@@ -191,9 +162,9 @@ export default function AnamnesisScreen() {
       </KeyboardAvoidingView>
 
       <View style={styles.footer}>
-        <Button 
-          title={loading ? "Salvando..." : "Próximo"} 
-          onPress={handleNext} 
+        <Button
+          title={loading ? 'Salvando...' : 'Próximo'}
+          onPress={handleNext}
           disabled={loading}
         />
       </View>
@@ -238,29 +209,8 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1, padding: spacing.lg },
   section: { marginBottom: spacing.xl },
-  sectionTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.md },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  halfWidth: { width: '48%' },
-  label: { ...typography.small, color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: 'bold' },
-  sexContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    height: 48,
-  },
-  sexButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 4,
-  },
-  sexButtonActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-  sexButtonText: { ...typography.body, color: colors.textSecondary },
+  sectionTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.sm },
+  subtitleText: { ...typography.small, color: colors.textSecondary },
   questionContainer: { marginBottom: spacing.lg },
   questionText: { ...typography.bodyBold, color: colors.textPrimary, marginBottom: spacing.sm },
   togglesRow: { flexDirection: 'row', gap: spacing.md },

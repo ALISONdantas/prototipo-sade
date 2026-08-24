@@ -4,6 +4,7 @@ import {
   uploadExamImage,
   retryExam as retryExamRequest,
   getExamHistory,
+  evaluateExam as evaluateExamRequest,
   CreateExamDraftPayload,
   ExamResponse,
 } from '../services/examService';
@@ -21,6 +22,7 @@ interface ExamActions {
   uploadImage: (imageUri: string) => Promise<void>;
   fetchExamHistory: () => Promise<void>;
   retryExam: (examId: string) => Promise<void>;
+  evaluateExam: (examId: string, opinion: string, agreesWithAi: boolean) => Promise<void>;
   clearCurrentExam: () => void;
 }
 
@@ -97,6 +99,29 @@ export const useExamStore = create<ExamState & ExamActions>((set, get) => ({
     } catch (error: any) {
       set({
         error: error.message || 'Erro ao tentar novamente o exame',
+        isSubmitting: false,
+      });
+      throw error;
+    }
+  },
+
+  evaluateExam: async (examId: string, opinion: string, agreesWithAi: boolean) => {
+    set({ isSubmitting: true, error: null });
+    try {
+      const evaluation = await evaluateExamRequest(examId, { opinion, agreesWithAi });
+      set((state) => ({
+        currentExam:
+          state.currentExam?.id === examId
+            ? { ...state.currentExam, evaluation }
+            : state.currentExam,
+        examHistory: state.examHistory.map((exam) =>
+          exam.id === examId ? { ...exam, evaluation } : exam,
+        ),
+        isSubmitting: false,
+      }));
+    } catch (error: any) {
+      set({
+        error: error.message || 'Erro ao enviar o parecer do profissional',
         isSubmitting: false,
       });
       throw error;

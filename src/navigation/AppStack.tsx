@@ -2,15 +2,17 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigatorScreenParams } from '@react-navigation/native';
-import { Home, Users, FileText, User } from 'lucide-react-native';
+import { Home, Users, FileText, User, Building2 } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 import { colors } from '../theme';
+import { getLogicalRole } from '../utils/role';
 
 import PatientDashboard from '../screens/Dashboard/PatientDashboard';
 import ProfessionalDashboard from '../screens/Dashboard/ProfessionalDashboard';
 import InstitutionDashboard from '../screens/Dashboard/InstitutionDashboard';
 import ResearcherDashboard from '../screens/Dashboard/ResearcherDashboard';
 import DependentsListScreen from '../screens/Dependents/DependentsListScreen';
+import AttendedUnitsScreen from '../screens/Institutions/AttendedUnitsScreen';
 import ExamHistoryScreen from '../screens/Exams/ExamHistoryScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
 import ChangePasswordScreen from '../screens/Auth/ChangePasswordScreen';
@@ -20,6 +22,7 @@ import ExamStack, { ExamStackParamList } from './ExamStack';
 export type AppTabParamList = {
   HomeTab: undefined;
   DependentsTab: undefined;
+  UnitsTab: undefined;
   ExamsTab: undefined;
   ProfileTab: undefined;
 };
@@ -33,16 +36,6 @@ export type AppStackParamList = {
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 const Stack = createNativeStackNavigator<AppStackParamList>();
-
-// Adapter do Backend (role_code da tabela `roles`) para Frontend ("PATIENT", "PROFESSIONAL", "INSTITUTION", "RESEARCHER")
-function getLogicalRole(user: { role_code?: string } | null | undefined): string {
-  const rawRole = (user?.role_code || 'PATIENT').toUpperCase();
-  if (rawRole === 'LEITOR' || rawRole === 'ADMIN') return 'PATIENT';
-  if (rawRole === 'GESTOR') return 'PROFESSIONAL';
-  if (rawRole === 'ANALISTA') return 'RESEARCHER';
-  if (rawRole === 'INSTITUTION_MANAGER') return 'INSTITUTION';
-  return rawRole;
-}
 
 const DashboardRouter = () => {
   const user = useAuthStore((state) => state.user);
@@ -63,8 +56,10 @@ const DashboardRouter = () => {
 
 function MainTabs() {
   const user = useAuthStore((state) => state.user);
-  const isPatient = getLogicalRole(user) === 'PATIENT';
-  const isResearcher = getLogicalRole(user) === 'RESEARCHER';
+  const logicalRole = getLogicalRole(user);
+  const isPatient = logicalRole === 'PATIENT';
+  const isProfessional = logicalRole === 'PROFESSIONAL';
+  const isResearcher = logicalRole === 'RESEARCHER';
 
   return (
     <Tab.Navigator
@@ -99,6 +94,17 @@ function MainTabs() {
           options={{
             tabBarLabel: 'Dependentes',
             tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
+          }}
+        />
+      )}
+
+      {isProfessional && (
+        <Tab.Screen
+          name="UnitsTab"
+          component={AttendedUnitsScreen}
+          options={{
+            tabBarLabel: 'Unidades',
+            tabBarIcon: ({ color, size }) => <Building2 color={color} size={size} />,
           }}
         />
       )}

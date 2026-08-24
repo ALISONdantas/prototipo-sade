@@ -6,13 +6,13 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { useAuthStore, RegisterData } from '../../store/authStore';
-import { Input, Button, ProgressBar } from '../../components';
+import { Input, Button, ProgressBar, ConsentCheckbox, ConsentTermsModal } from '../../components';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 type RouteProps = RouteProp<AuthStackParamList, 'Register'>;
 
 const profileLabels: Record<string, string> = {
-  PATIENT: 'Paciente',
+  PATIENT: 'Usuário',
   PROFESSIONAL: 'Profissional de Saúde',
   INSTITUTION: 'Instituição',
 };
@@ -53,6 +53,9 @@ export default function RegisterScreen() {
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const [birthDateError, setBirthDateError] = useState('');
   const [genderError, setGenderError] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsError, setTermsError] = useState('');
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const register = useAuthStore((state) => state.register);
 
@@ -97,7 +100,10 @@ export default function RegisterScreen() {
     setConfirmPasswordError('');
     setBirthDateError('');
     setGenderError('');
+    setTermsError('');
 
+    // Protótipo: o checkbox de consentimento fica visível (RNF10), mas não
+    // bloqueia a navegação — o objetivo aqui é validar as telas livremente.
     if (
       !fullName.trim() ||
       !cpf.trim() ||
@@ -138,6 +144,7 @@ export default function RegisterScreen() {
         birthDate,
         gender,
         role,
+        termsAccepted,
         ...(role === 'PROFESSIONAL' && { crm, especialidade, conselho }),
         ...(role === 'INSTITUTION' && { cnpj, institutionName, responsibleName }),
       };
@@ -516,6 +523,16 @@ export default function RegisterScreen() {
                 </VStack>
               </Animated.View>
 
+              <ConsentCheckbox
+                checked={termsAccepted}
+                onToggle={() => {
+                  setTermsAccepted((prev) => !prev);
+                  setTermsError('');
+                }}
+                onReadTerms={() => setShowTermsModal(true)}
+                error={termsError}
+              />
+
               <HStack justifyContent="center" mt="$4" mb="$8">
                 <Text color="$textLight500" fontSize="$sm">
                   Já tem conta?{' '}
@@ -538,6 +555,16 @@ export default function RegisterScreen() {
           />
         </Box>
       </Box>
+
+      <ConsentTermsModal
+        visible={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={() => {
+          setTermsAccepted(true);
+          setTermsError('');
+          setShowTermsModal(false);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

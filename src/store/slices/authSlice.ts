@@ -58,7 +58,7 @@ export const createAuthSlice: AuthStoreSlice<
     const [day, month, year] = data.birthDate.split('/');
     const birth_date = `${year}-${month}-${day}`;
 
-    const payload: Record<string, string | number> = {
+    const payload: Record<string, string | number | boolean> = {
       first_name,
       last_name,
       email: data.email.trim(),
@@ -68,6 +68,7 @@ export const createAuthSlice: AuthStoreSlice<
       birth_date,
       gender: GENDER_TO_ENUM[data.gender] || data.gender,
       id_role: ROLE_TO_ID[data.role],
+      terms_accepted: data.termsAccepted,
     };
 
     if (data.crm) payload.crm = data.crm;

@@ -7,9 +7,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../navigation/AppStack';
 import { colors } from '../../theme';
 import { ErrorState, EmptyState } from '../../components';
+import { useAuthStore } from '../../store/authStore';
+import { getLogicalRole } from '../../utils/role';
 import {
   getInstitutionAlerts,
   resolveInstitutionAlert,
+  getProfessionalAlerts,
+  resolveProfessionalAlert,
   type InstitutionAlert,
 } from '../../services/alertsService';
 
@@ -102,6 +106,8 @@ function AlertCard({
 
 export default function AlertsScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuthStore();
+  const isProfessional = getLogicalRole(user) === 'PROFESSIONAL';
   const [alerts, setAlerts] = useState<InstitutionAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,11 +116,12 @@ export default function AlertsScreen() {
   const fetchAlerts = useCallback(() => {
     setIsLoading(true);
     setError(null);
-    getInstitutionAlerts()
+    const request = isProfessional ? getProfessionalAlerts() : getInstitutionAlerts();
+    request
       .then(setAlerts)
       .catch(() => setError('Não foi possível carregar os alertas.'))
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [isProfessional]);
 
   useFocusEffect(
     useCallback(() => {
@@ -125,7 +132,7 @@ export default function AlertsScreen() {
   const handleResolve = async (alertId: string) => {
     setResolvingId(alertId);
     try {
-      await resolveInstitutionAlert(alertId);
+      await (isProfessional ? resolveProfessionalAlert(alertId) : resolveInstitutionAlert(alertId));
       setAlerts((current) =>
         current.map((alert) => (alert.id === alertId ? { ...alert, resolved: true } : alert)),
       );

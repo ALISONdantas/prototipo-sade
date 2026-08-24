@@ -5,3 +5,6 @@ export * from './EmptyState';
 export * from './AddDependentBottomSheet';
 export * from './DeleteDependentModal';
 export * from './ErrorState';
+export * from './MetricCard';
+export * from './ConsentCheckbox';
+export * from './ConsentTermsModal';

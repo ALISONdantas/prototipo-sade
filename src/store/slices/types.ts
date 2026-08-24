@@ -9,6 +9,9 @@ export interface User {
   role_code?: string;
   cpf?: string;
   phone?: string;
+  birth_date?: string;
+  gender?: string;
+  age?: number;
 }
 
 export interface RegisterData {
@@ -26,6 +29,12 @@ export interface RegisterData {
   institutionName?: string;
   responsibleName?: string;
   phone: string;
+  termsAccepted: boolean;
+}
+
+export interface UpdateProfileData {
+  fullName?: string;
+  phone?: string;
 }
 
 export interface AuthSlice {
@@ -41,6 +50,7 @@ export interface AuthSlice {
 export interface UserSlice {
   user: User | null;
   fetchUser: () => Promise<void>;
+  updateProfile: (data: UpdateProfileData) => Promise<void>;
 }
 
 export interface SessionSlice {

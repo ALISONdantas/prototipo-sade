@@ -56,7 +56,7 @@ export default function PatientDashboard() {
 
         {/* Big Card */}
         <Pressable
-          onPress={() => navigation.navigate('ExamFlow', { screen: 'Anamnesis', params: {} })}
+          onPress={() => navigation.navigate('ExamFlow', { screen: 'SelectTestee' })}
         >
           <Box bg={colors.primary} borderRadius="$2xl" p="$6" alignItems="center" mb="$8">
             <User size={40} color={colors.white} />

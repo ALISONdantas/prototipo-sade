@@ -48,28 +48,39 @@ export const dependentsService = {
       });
       return response.data;
     } catch (error: any) {
-      if (!error.response || error.response?.status === 404) {
-        console.warn('Mocking createDependent (Backend missing or CORS block)');
-        return mockCreateDependent({
-          name: data.name,
-          age: calculateAge(data.birthDate),
-          sex: GENDER_TO_SEX[data.gender],
-          birthDate: data.birthDate,
-          relationship: data.relationship,
-          genderLabel: data.gender,
-        });
-      }
-      throw error;
+      // Protótipo: qualquer falha do backend (404, 500, schema desatualizado
+      // etc.) cai no mock, para nunca travar a navegação entre telas.
+      console.warn('Mocking createDependent (Backend indisponível ou com erro)', error?.message);
+      return mockCreateDependent({
+        name: data.name,
+        age: calculateAge(data.birthDate),
+        sex: GENDER_TO_SEX[data.gender],
+        birthDate: data.birthDate,
+        relationship: data.relationship,
+        genderLabel: data.gender,
+      });
     }
   },
 
   updateDependent: async (id: string, data: CreateDependentData) => {
-    const response = await api.put(`/dependents/${id}`, {
-      name: data.name,
-      birth_date: toIsoDate(data.birthDate),
-      gender: GENDER_TO_ENUM[data.gender],
-      relationship: data.relationship,
-    });
-    return response.data;
+    try {
+      const response = await api.put(`/dependents/${id}`, {
+        name: data.name,
+        birth_date: toIsoDate(data.birthDate),
+        gender: GENDER_TO_ENUM[data.gender],
+        relationship: data.relationship,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.warn('Mocking updateDependent (Backend indisponível ou com erro)', error?.message);
+      return {
+        id_dependent: id,
+        name: data.name,
+        birth_date: toIsoDate(data.birthDate),
+        gender: GENDER_TO_ENUM[data.gender],
+        relationship: data.relationship,
+        is_active: true,
+      };
+    }
   },
 };

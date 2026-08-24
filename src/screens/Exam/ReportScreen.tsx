@@ -1,13 +1,23 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Share, ActivityIndicator } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  TextInput,
+  TouchableOpacity,
+} from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { FileText, ImageIcon, CheckCircle2, AlertTriangle } from 'lucide-react-native';
+import { FileText, ImageIcon, CheckCircle2, AlertTriangle, Stethoscope } from 'lucide-react-native';
 
 import { colors, spacing, typography, radius, shadows } from '../../theme';
 import { Button } from '../../components/Button';
 import { ExamStackParamList } from '../../navigation/ExamStack';
 import { useExamStore } from '../../store/examStore';
+import { useAuthStore } from '../../store/authStore';
+import { getLogicalRole } from '../../utils/role';
 import { generateAndSharePdfMock } from '../../services/pdfService';
 
 type ReportScreenRouteProp = RouteProp<ExamStackParamList, 'Report'>;
@@ -18,12 +28,18 @@ export default function ReportScreen() {
   const route = useRoute<ReportScreenRouteProp>();
   const { examId } = route.params;
 
-  const { currentExam, examHistory, clearCurrentExam } = useExamStore();
+  const { currentExam, examHistory, clearCurrentExam, evaluateExam, isSubmitting } =
+    useExamStore();
+  const { user } = useAuthStore();
+  const isProfessional = getLogicalRole(user) === 'PROFESSIONAL';
 
   const exam = useMemo(
     () => (currentExam?.id === examId ? currentExam : examHistory.find((e) => e.id === examId)),
     [examId, currentExam, examHistory]
   );
+
+  const [opinion, setOpinion] = useState('');
+  const [agreesWithAi, setAgreesWithAi] = useState<boolean | null>(null);
 
   if (!exam) {
     return (
@@ -45,6 +61,15 @@ export default function ReportScreen() {
       await generateAndSharePdfMock(exam);
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleSendEvaluation = async () => {
+    if (agreesWithAi === null) return;
+    try {
+      await evaluateExam(examId, opinion, agreesWithAi);
+    } catch (error) {
+      console.error('Erro ao enviar parecer do profissional:', error);
     }
   };
 
@@ -124,6 +149,83 @@ export default function ReportScreen() {
               Este documento apresenta o resultado de uma triagem digital. Ele NÃO possui validade de diagnóstico médico. Em caso de dúvidas ou persistência de dores, consulte um ortopedista ou especialista especializado.
             </Text>
           </View>
+
+          {/* Parecer do Profissional — visível apenas para o perfil Profissional */}
+          {isProfessional && (
+            <View style={styles.evaluationSection}>
+              <View style={styles.evaluationHeader}>
+                <Stethoscope size={20} color={colors.primary} />
+                <Text style={styles.sectionTitle}>Parecer do Profissional</Text>
+              </View>
+
+              {exam.evaluation ? (
+                <View style={styles.evaluationDoneBox}>
+                  <Text style={styles.evaluationDoneLabel}>
+                    {exam.evaluation.agreesWithAi
+                      ? 'Diagnóstico da IA confirmado'
+                      : 'Divergência registrada'}
+                  </Text>
+                  {!!exam.evaluation.opinion && (
+                    <Text style={styles.evaluationDoneText}>{exam.evaluation.opinion}</Text>
+                  )}
+                </View>
+              ) : (
+                <>
+                  <View style={styles.evaluationToggles}>
+                    <TouchableOpacity
+                      style={[
+                        styles.evaluationTogglePill,
+                        agreesWithAi === true && styles.evaluationTogglePillActive,
+                      ]}
+                      onPress={() => setAgreesWithAi(true)}
+                    >
+                      <Text
+                        style={[
+                          styles.evaluationToggleText,
+                          agreesWithAi === true && styles.evaluationToggleTextActive,
+                        ]}
+                      >
+                        Confirmar diagnóstico da IA
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.evaluationTogglePill,
+                        agreesWithAi === false && styles.evaluationTogglePillActive,
+                      ]}
+                      onPress={() => setAgreesWithAi(false)}
+                    >
+                      <Text
+                        style={[
+                          styles.evaluationToggleText,
+                          agreesWithAi === false && styles.evaluationToggleTextActive,
+                        ]}
+                      >
+                        Divergir e justificar
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TextInput
+                    style={styles.evaluationInput}
+                    placeholder="Escreva seu parecer clínico (opcional)"
+                    placeholderTextColor={colors.textDisabled}
+                    value={opinion}
+                    onChangeText={setOpinion}
+                    multiline
+                    numberOfLines={4}
+                  />
+
+                  <Button
+                    title={isSubmitting ? 'Enviando...' : 'Enviar Avaliação'}
+                    onPress={handleSendEvaluation}
+                    disabled={agreesWithAi === null || isSubmitting}
+                    style={styles.evaluationSubmitButton}
+                  />
+                </>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Botões */}
@@ -269,5 +371,71 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     marginBottom: spacing.md,
+  },
+  evaluationSection: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  evaluationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  evaluationToggles: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  evaluationTogglePill: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+  },
+  evaluationTogglePillActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  evaluationToggleText: {
+    ...typography.small,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  evaluationToggleTextActive: {
+    color: colors.primaryDark,
+    fontWeight: 'bold',
+  },
+  evaluationInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    minHeight: 90,
+    textAlignVertical: 'top',
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  evaluationSubmitButton: {
+    marginTop: spacing.xs,
+  },
+  evaluationDoneBox: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  evaluationDoneLabel: {
+    ...typography.bodyBold,
+    color: colors.primaryDark,
+    marginBottom: spacing.xs,
+  },
+  evaluationDoneText: {
+    ...typography.small,
+    color: colors.textSecondary,
   },
 });

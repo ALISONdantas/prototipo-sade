@@ -10,14 +10,29 @@ export interface DependentCardProps {
   sex: string;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPress?: () => void;
+  selected?: boolean;
 }
 
-export function DependentCard({ name, age, sex, onEdit, onDelete }: DependentCardProps) {
+export function DependentCard({
+  name,
+  age,
+  sex,
+  onEdit,
+  onDelete,
+  onPress,
+  selected,
+}: DependentCardProps) {
   // Format the sex to a more readable label if needed, or just use it directly
   const displaySex = sex === 'M' ? 'Masc' : sex === 'F' ? 'Fem' : sex;
 
+  const CardWrapper = onPress ? TouchableOpacity : View;
+
   return (
-    <View style={styles.card}>
+    <CardWrapper
+      style={[styles.card, selected && styles.cardSelected]}
+      {...(onPress ? { onPress, activeOpacity: 0.7 } : {})}
+    >
       <View style={styles.avatarContainer}>
         <User color={colors.primary} size={24} />
       </View>
@@ -56,7 +71,7 @@ export function DependentCard({ name, age, sex, onEdit, onDelete }: DependentCar
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </CardWrapper>
   );
 }
 
@@ -68,7 +83,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: 12,
     marginBottom: spacing.md,
+    borderWidth: 2,
+    borderColor: 'transparent',
     ...shadows.card,
+  },
+  cardSelected: {
+    borderColor: colors.primary,
   },
   avatarContainer: {
     width: 48,

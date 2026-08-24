@@ -10,7 +10,7 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ProfileSele
 const profiles = [
   {
     role: 'PATIENT' as const,
-    title: 'Paciente',
+    title: 'Usuário',
     description: 'Quero realizar triagens para mim ou meus dependentes.',
     icon: User,
   },

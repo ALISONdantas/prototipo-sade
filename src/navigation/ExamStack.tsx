@@ -1,15 +1,27 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import AnamnesisScreen from '../screens/Exam/AnamnesisScreen';
+import SelectTesteeScreen from '../screens/Exam/SelectTesteeScreen';
+import PatientPickerScreen from '../screens/Exam/PatientPickerScreen';
+import HealthHistoryScreen from '../screens/Exam/HealthHistoryScreen';
 import AdamsTutorialScreen from '../screens/Exam/AdamsTutorialScreen';
 import CameraScreen from '../screens/Exam/CameraScreen';
 import AILoadingScreen from '../screens/Exam/AILoadingScreen';
 import ResultScreen from '../screens/Exam/ResultScreen';
 import ReportScreen from '../screens/Exam/ReportScreen';
 
+export type ExamTestee = {
+  dependentId?: string;
+  patientId?: string;
+  dependentName?: string;
+  age: number;
+  sex: 'M' | 'F' | 'O';
+};
+
 export type ExamStackParamList = {
-  Anamnesis: { dependentId?: string };
+  SelectTestee: undefined;
+  PatientPicker: undefined;
+  HealthHistory: ExamTestee;
   AdamsTutorial: undefined;
   Camera: undefined;
   AILoading: { examId: string; imageUri?: string };
@@ -22,7 +34,9 @@ const Stack = createNativeStackNavigator<ExamStackParamList>();
 export default function ExamStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Anamnesis" component={AnamnesisScreen} />
+      <Stack.Screen name="SelectTestee" component={SelectTesteeScreen} />
+      <Stack.Screen name="PatientPicker" component={PatientPickerScreen} />
+      <Stack.Screen name="HealthHistory" component={HealthHistoryScreen} />
       <Stack.Screen name="AdamsTutorial" component={AdamsTutorialScreen} />
       <Stack.Screen
         name="Camera"

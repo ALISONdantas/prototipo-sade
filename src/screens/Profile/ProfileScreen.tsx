@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Text, SafeAreaView, Pressable, Alert, ScrollView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar, AvatarFallbackText } from '@gluestack-ui/themed';
-import { ChevronRight, LogOut, KeyRound } from 'lucide-react-native';
+import { ChevronRight, LogOut, KeyRound, Pencil } from 'lucide-react-native';
 
 import { colors, spacing, typography } from '../../theme';
 import { useAuthStore } from '../../store/authStore';
 import { AppStackParamList } from '../../navigation/AppStack';
+import { Input, Button } from '../../components';
 
 type NavigationProp = NativeStackNavigationProp<AppStackParamList>;
 
@@ -30,13 +31,18 @@ function formatPhone(phone?: string): string {
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { user, logout } = useAuthStore();
+  const { user, logout, updateProfile } = useAuthStore();
 
   const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'Usuário';
   const fullName = user?.full_name || 'Usuário Não Identificado';
   const email = user?.email || 'N/A';
   const cpf = maskCpf(user?.cpf);
   const phone = formatPhone(user?.phone);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(fullName);
+  const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [saving, setSaving] = useState(false);
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
@@ -54,6 +60,26 @@ export default function ProfileScreen() {
 
   const handlePasswordChange = () => {
     navigation.navigate('ChangePassword');
+  };
+
+  const handleStartEdit = () => {
+    setEditName(fullName);
+    setEditPhone(user?.phone || '');
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = async () => {
+    setSaving(true);
+    try {
+      await updateProfile({ fullName: editName, phone: editPhone });
+      setIsEditing(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -74,27 +100,78 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Dados Pessoais</Text>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Nome completo</Text>
-            <Text style={styles.infoValue}>{fullName}</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Dados Pessoais</Text>
+            {!isEditing && (
+              <Pressable
+                style={styles.editButton}
+                onPress={handleStartEdit}
+                accessibilityLabel="Editar dados pessoais"
+              >
+                <Pencil color={colors.primary} size={16} />
+                <Text style={styles.editButtonText}>Editar</Text>
+              </Pressable>
+            )}
           </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>E-mail</Text>
-            <Text style={styles.infoValue}>{email}</Text>
-          </View>
+          {isEditing ? (
+            <View style={{ gap: spacing.md }}>
+              <Input label="Nome completo" value={editName} onChangeText={setEditName} autoCapitalize="words" />
+              <Input
+                label="Telefone"
+                value={editPhone}
+                onChangeText={setEditPhone}
+                keyboardType="phone-pad"
+              />
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>CPF</Text>
-            <Text style={styles.infoValue}>{cpf}</Text>
-          </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>E-mail</Text>
+                <Text style={styles.infoValue}>{email}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>CPF</Text>
+                <Text style={styles.infoValue}>{cpf}</Text>
+              </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Telefone</Text>
-            <Text style={styles.infoValue}>{phone}</Text>
-          </View>
+              <View style={styles.editActionsRow}>
+                <Button
+                  title="Cancelar"
+                  variant="ghost"
+                  onPress={handleCancelEdit}
+                  disabled={saving}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  title={saving ? 'Salvando...' : 'Salvar'}
+                  onPress={handleSaveEdit}
+                  disabled={saving}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+          ) : (
+            <>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Nome completo</Text>
+                <Text style={styles.infoValue}>{fullName}</Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>E-mail</Text>
+                <Text style={styles.infoValue}>{email}</Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>CPF</Text>
+                <Text style={styles.infoValue}>{cpf}</Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Telefone</Text>
+                <Text style={styles.infoValue}>{phone}</Text>
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -145,13 +222,22 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     paddingBottom: spacing.lg,
   },
-  sectionTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.lg },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  sectionTitle: { ...typography.h3, color: colors.textPrimary },
+  editButton: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: spacing.xs },
+  editButtonText: { ...typography.small, color: colors.primary, fontWeight: 'bold' },
   infoRow: {
     flexDirection: 'column',
     marginBottom: spacing.md,
   },
   infoLabel: { ...typography.small, color: colors.textSecondary, marginBottom: 2 },
   infoValue: { ...typography.body, color: colors.textPrimary },
+  editActionsRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
