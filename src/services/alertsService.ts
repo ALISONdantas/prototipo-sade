@@ -26,7 +26,9 @@ interface InstitutionAlertApiResponse {
 let MOCK_PROFESSIONAL_ALERTS: InstitutionAlert[] = [
   {
     id: 'mock-prof-alert-1',
-    examId: 'mock-exam-201',
+    // Mesmo id do exame POSITIVE mockado em examService.getExamHistory, para
+    // que o laudo (ReportScreen) encontre o exame ao navegar direto daqui.
+    examId: 'mock-exam-1',
     patientName: 'Ana Silva',
     age: 12,
     result: 'POSITIVE',
@@ -80,6 +82,26 @@ export const resolveProfessionalAlert = async (alertId: string): Promise<void> =
       return;
     }
     console.error('Erro ao resolver alerta do profissional:', error);
+    throw error;
+  }
+};
+
+// Chamado a partir do laudo (ReportScreen) quando o profissional envia o
+// parecer clínico — o alerta correspondente ao exame é marcado como
+// resolvido automaticamente, sem exigir uma ação separada na tela de Alertas.
+export const resolveProfessionalAlertByExam = async (examId: string): Promise<void> => {
+  try {
+    await api.post(`/professional/alerts/resolve-by-exam/${examId}`);
+  } catch (error: any) {
+    if (!error.response || error.response.status === 404) {
+      console.warn('Mocking resolveProfessionalAlertByExam (Backend endpoint missing)');
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      MOCK_PROFESSIONAL_ALERTS = MOCK_PROFESSIONAL_ALERTS.map((alert) =>
+        alert.examId === examId ? { ...alert, resolved: true } : alert,
+      );
+      return;
+    }
+    console.error('Erro ao resolver alerta do profissional pelo exame:', error);
     throw error;
   }
 };

@@ -11,19 +11,19 @@ const profiles = [
   {
     role: 'PATIENT' as const,
     title: 'Usuário',
-    description: 'Quero realizar triagens para mim ou meus dependentes.',
+    description: 'Responsável por realizar os testes.',
     icon: User,
   },
   {
     role: 'PROFESSIONAL' as const,
     title: 'Profissional de Saúde',
-    description: 'Sou médico, fisioterapeuta ou profissional da área da saúde.',
+    description: 'Médico especialista.',
     icon: Stethoscope,
   },
   {
     role: 'INSTITUTION' as const,
     title: 'Instituição',
-    description: 'Represento uma escola, clínica ou organização de saúde.',
+    description: 'Instituição responsável por realizar e gerenciar os laudos.',
     icon: Building2,
   },
 ];

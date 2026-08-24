@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { useExamStore } from '../../store/examStore';
 import { useAuthStore } from '../../store/authStore';
 import { getLogicalRole } from '../../utils/role';
 import { generateAndSharePdfMock } from '../../services/pdfService';
+import { resolveProfessionalAlertByExam } from '../../services/alertsService';
 
 type ReportScreenRouteProp = RouteProp<ExamStackParamList, 'Report'>;
 type NavigationProp = NativeStackNavigationProp<ExamStackParamList>;
@@ -28,7 +29,7 @@ export default function ReportScreen() {
   const route = useRoute<ReportScreenRouteProp>();
   const { examId } = route.params;
 
-  const { currentExam, examHistory, clearCurrentExam, evaluateExam, isSubmitting } =
+  const { currentExam, examHistory, isLoadingHistory, fetchExamHistory, clearCurrentExam, evaluateExam, isSubmitting } =
     useExamStore();
   const { user } = useAuthStore();
   const isProfessional = getLogicalRole(user) === 'PROFESSIONAL';
@@ -40,6 +41,17 @@ export default function ReportScreen() {
 
   const [opinion, setOpinion] = useState('');
   const [agreesWithAi, setAgreesWithAi] = useState<boolean | null>(null);
+
+  // Ao chegar aqui direto (ex.: a partir de "Resolver" na tela de Alertas),
+  // o histórico de exames pode ainda não ter sido carregado — busca sob
+  // demanda (uma única vez) para não deixar o laudo preso no spinner.
+  const [triedFetch, setTriedFetch] = useState(false);
+  useEffect(() => {
+    if (!exam && !isLoadingHistory && !triedFetch) {
+      setTriedFetch(true);
+      fetchExamHistory();
+    }
+  }, [exam, isLoadingHistory, triedFetch, fetchExamHistory]);
 
   if (!exam) {
     return (
@@ -68,6 +80,9 @@ export default function ReportScreen() {
     if (agreesWithAi === null) return;
     try {
       await evaluateExam(examId, opinion, agreesWithAi);
+      // Resolve o alerta correspondente (se houver) agora que o parecer foi
+      // registrado. Falha aqui não deve bloquear o fluxo do laudo.
+      resolveProfessionalAlertByExam(examId).catch(() => {});
     } catch (error) {
       console.error('Erro ao enviar parecer do profissional:', error);
     }

@@ -1,17 +1,13 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList } from 'react-native';
 import { Box, Text, VStack, HStack, Pressable } from '@gluestack-ui/themed';
-import { ArrowLeft, AlertTriangle, Check } from 'lucide-react-native';
+import { ArrowLeft, AlertTriangle, Check, Stethoscope } from 'lucide-react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../navigation/AppStack';
 import { colors } from '../../theme';
 import { ErrorState, EmptyState } from '../../components';
-import {
-  getProfessionalAlerts,
-  resolveProfessionalAlert,
-  type InstitutionAlert,
-} from '../../services/alertsService';
+import { getProfessionalAlerts, type InstitutionAlert } from '../../services/alertsService';
 
 type NavigationProp = NativeStackNavigationProp<AppStackParamList, 'Alerts'>;
 
@@ -28,11 +24,9 @@ const RESULT_COLOR: Record<InstitutionAlert['result'], string> = {
 function AlertCard({
   alert,
   onResolve,
-  resolving,
 }: {
   alert: InstitutionAlert;
   onResolve: () => void;
-  resolving: boolean;
 }) {
   const formattedDate = new Date(alert.examDate).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -74,24 +68,18 @@ function AlertCard({
           </Text>
         </HStack>
       ) : (
-        <Pressable onPress={onResolve} disabled={resolving}>
+        <Pressable onPress={onResolve}>
           <HStack
-            borderWidth={1}
-            borderColor={colors.primary}
+            bg={colors.primary}
             borderRadius="$lg"
             py="$2"
             alignItems="center"
             justifyContent="center"
             space="xs"
-            opacity={resolving ? 0.6 : 1}
           >
-            {resolving ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Check size={16} color={colors.primary} />
-            )}
-            <Text color={colors.primary} fontSize="$sm" fontWeight="$bold">
-              {resolving ? 'Marcando...' : 'Marcar como resolvido'}
+            <Stethoscope size={16} color={colors.white} />
+            <Text color={colors.white} fontSize="$sm" fontWeight="$bold">
+              Resolver
             </Text>
           </HStack>
         </Pressable>
@@ -105,7 +93,6 @@ export default function AlertsScreen() {
   const [alerts, setAlerts] = useState<InstitutionAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   const fetchAlerts = useCallback(() => {
     setIsLoading(true);
@@ -122,18 +109,11 @@ export default function AlertsScreen() {
     }, [fetchAlerts]),
   );
 
-  const handleResolve = async (alertId: string) => {
-    setResolvingId(alertId);
-    try {
-      await resolveProfessionalAlert(alertId);
-      setAlerts((current) =>
-        current.map((alert) => (alert.id === alertId ? { ...alert, resolved: true } : alert)),
-      );
-    } catch (err) {
-      console.error('Erro ao marcar alerta como resolvido:', err);
-    } finally {
-      setResolvingId(null);
-    }
+  // "Resolver" não marca o alerta como concluído aqui — leva o profissional
+  // direto para o laudo do exame, onde ele dá o parecer clínico. O alerta só
+  // é marcado como resolvido depois que o parecer é enviado (ReportScreen).
+  const handleResolve = (alert: InstitutionAlert) => {
+    navigation.navigate('ExamFlow', { screen: 'Report', params: { examId: alert.examId } });
   };
 
   // Tela exclusiva do Profissional — só os casos com indícios detectados
@@ -174,13 +154,7 @@ export default function AlertsScreen() {
         <FlatList
           data={visibleAlerts}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <AlertCard
-              alert={item}
-              onResolve={() => handleResolve(item.id)}
-              resolving={resolvingId === item.id}
-            />
-          )}
+          renderItem={({ item }) => <AlertCard alert={item} onResolve={() => handleResolve(item)} />}
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         />
