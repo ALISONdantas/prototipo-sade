@@ -1,0 +1,109 @@
+import { create } from 'zustand';
+import {
+  createExamDraft,
+  uploadExamImage,
+  retryExam as retryExamRequest,
+  getExamHistory,
+  CreateExamDraftPayload,
+  ExamResponse,
+} from '../services/examService';
+
+interface ExamState {
+  currentExam: ExamResponse | null;
+  examHistory: ExamResponse[];
+  isSubmitting: boolean;
+  isLoadingHistory: boolean;
+  error: string | null;
+}
+
+interface ExamActions {
+  createExam: (payload: CreateExamDraftPayload) => Promise<void>;
+  uploadImage: (imageUri: string) => Promise<void>;
+  fetchExamHistory: () => Promise<void>;
+  retryExam: (examId: string) => Promise<void>;
+  clearCurrentExam: () => void;
+}
+
+export const useExamStore = create<ExamState & ExamActions>((set, get) => ({
+  currentExam: null,
+  examHistory: [],
+  isSubmitting: false,
+  isLoadingHistory: false,
+  error: null,
+
+  createExam: async (payload: CreateExamDraftPayload) => {
+    set({ isSubmitting: true, error: null });
+    try {
+      const exam = await createExamDraft(payload);
+      set({ currentExam: exam, isSubmitting: false });
+    } catch (error: any) {
+      set({
+        error: error.message || 'Erro ao criar o rascunho do exame',
+        isSubmitting: false,
+      });
+      throw error;
+    }
+  },
+
+  uploadImage: async (imageUri: string) => {
+    const { currentExam } = get();
+    if (!currentExam) {
+      throw new Error('Nenhum exame em andamento para anexar a imagem.');
+    }
+
+    set({ isSubmitting: true, error: null });
+    try {
+      await uploadExamImage(currentExam.id, imageUri);
+
+      // Update local status to PENDING_AI
+      set((state) => ({
+        currentExam: state.currentExam ? { ...state.currentExam, status: 'PENDING_AI' } : null,
+        isSubmitting: false,
+      }));
+    } catch (error: any) {
+      set({
+        error: error.message || 'Erro ao fazer upload da imagem',
+        isSubmitting: false,
+      });
+      throw error;
+    }
+  },
+
+  fetchExamHistory: async () => {
+    set({ isLoadingHistory: true, error: null });
+    try {
+      const history = await getExamHistory();
+      set({ examHistory: history, isLoadingHistory: false });
+    } catch (error: any) {
+      set({
+        error: error.message || 'Erro ao buscar histórico de exames',
+        isLoadingHistory: false,
+      });
+    }
+  },
+
+  retryExam: async (examId: string) => {
+    set({ isSubmitting: true, error: null });
+    try {
+      const { status } = await retryExamRequest(examId);
+      set((state) => ({
+        currentExam:
+          state.currentExam?.id === examId ? { ...state.currentExam, status } : state.currentExam,
+        examHistory: state.examHistory.map((exam) =>
+          exam.id === examId ? { ...exam, status } : exam,
+        ),
+        isSubmitting: false,
+      }));
+    } catch (error: any) {
+      set({
+        error: error.message || 'Erro ao tentar novamente o exame',
+        isSubmitting: false,
+      });
+      throw error;
+    }
+  },
+
+  clearCurrentExam: () => {
+    set({ currentExam: null, error: null });
+  },
+}));

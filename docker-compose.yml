@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  expo:
+    build: .
+    container_name: sade-frontend
+    ports:
+      - "8081:8081"
+    volumes:
+      - .:/app
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - EXPO_PACKAGER_PROXY_URL=http://localhost:8081
+    stdin_open: true
+    tty: true
+    command: npm start -- --clear
