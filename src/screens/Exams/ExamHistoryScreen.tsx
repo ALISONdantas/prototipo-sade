@@ -1,24 +1,31 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, Pressable } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Clock } from 'lucide-react-native';
+import { Clock, ClipboardCheck } from 'lucide-react-native';
 
-import { colors, spacing, typography } from '../../theme';
+import { colors, spacing, typography, radius } from '../../theme';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { ExamHistoryCard } from '../../components/ExamHistoryCard';
 import { useExamStore } from '../../store/examStore';
+import { useAuthStore } from '../../store/authStore';
+import { getLogicalRole } from '../../utils/role';
 import { AppTabParamList, AppStackParamList } from '../../navigation/AppStack';
 
 type NavigationProp = BottomTabNavigationProp<AppTabParamList> &
   NativeStackNavigationProp<AppStackParamList>;
 
+type ExamsSection = 'history' | 'toEvaluate';
+
 export default function ExamHistoryScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { examHistory, isLoadingHistory, fetchExamHistory, retryExam, error } = useExamStore();
+  const { user } = useAuthStore();
+  const isProfessional = getLogicalRole(user) === 'PROFESSIONAL';
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [section, setSection] = useState<ExamsSection>('history');
 
   useFocusEffect(
     useCallback(() => {
@@ -26,8 +33,17 @@ export default function ExamHistoryScreen() {
     }, []),
   );
 
+  // "Exames para avaliar" (só Profissional): exames concluídos que ainda não
+  // receberam o parecer do profissional (ver seção de avaliação no Report).
+  const toEvaluate = useMemo(
+    () => examHistory.filter((exam) => exam.status !== 'FAILED' && !exam.evaluation),
+    [examHistory],
+  );
+  const visibleExams = isProfessional && section === 'toEvaluate' ? toEvaluate : examHistory;
+
   const handleOpenExam = (examId: string) => {
-    navigation.navigate('ExamFlow', { screen: 'Result', params: { examId } });
+    const screen = isProfessional && section === 'toEvaluate' ? 'Report' : 'Result';
+    navigation.navigate('ExamFlow', { screen, params: { examId } });
   };
 
   const handleRetry = async (examId: string) => {
@@ -42,19 +58,47 @@ export default function ExamHistoryScreen() {
     }
   };
 
-  const renderEmptyState = () => (
-    <EmptyState
-      title="Nenhum exame realizado"
-      subtitle="Seus exames aparecerão aqui assim que forem realizados."
-      icon={<Clock color={colors.primary} size={64} />}
-    />
-  );
+  const renderEmptyState = () =>
+    section === 'toEvaluate' ? (
+      <EmptyState
+        title="Nenhum exame pendente"
+        subtitle="Exames de pacientes prontos para o seu parecer aparecerão aqui."
+        icon={<ClipboardCheck color={colors.primary} size={64} />}
+      />
+    ) : (
+      <EmptyState
+        title="Nenhum exame realizado"
+        subtitle="Seus exames aparecerão aqui assim que forem realizados."
+        icon={<Clock color={colors.primary} size={64} />}
+      />
+    );
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Histórico de Exames</Text>
       </View>
+
+      {isProfessional && (
+        <View style={styles.tabsRow}>
+          <Pressable
+            style={[styles.tab, section === 'history' && styles.tabActive]}
+            onPress={() => setSection('history')}
+          >
+            <Text style={[styles.tabText, section === 'history' && styles.tabTextActive]}>
+              Histórico de exames
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tab, section === 'toEvaluate' && styles.tabActive]}
+            onPress={() => setSection('toEvaluate')}
+          >
+            <Text style={[styles.tabText, section === 'toEvaluate' && styles.tabTextActive]}>
+              Exames para avaliar
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       <View style={styles.container}>
         {isLoadingHistory ? (
@@ -63,11 +107,11 @@ export default function ExamHistoryScreen() {
           </View>
         ) : error ? (
           <ErrorState message={error} onRetry={fetchExamHistory} />
-        ) : examHistory.length === 0 ? (
+        ) : visibleExams.length === 0 ? (
           renderEmptyState()
         ) : (
           <FlatList
-            data={examHistory}
+            data={visibleExams}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) => (
@@ -102,6 +146,31 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...typography.h3,
+  },
+  tabsRow: {
+    flexDirection: 'row',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    backgroundColor: colors.border,
+    borderRadius: radius.full,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    alignItems: 'center',
+  },
+  tabActive: {
+    backgroundColor: colors.surface,
+  },
+  tabText: {
+    ...typography.small,
+    color: colors.textSecondary,
+    fontWeight: 'bold',
+  },
+  tabTextActive: {
+    color: colors.primary,
   },
   listContent: {
     padding: spacing.md,
