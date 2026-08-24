@@ -40,17 +40,17 @@ interface InstitutionDashboardApiResponse {
 // backend. Ver docs/frontend-institution-dashboard-filters-export-issue-48.md
 // para o contrato esperado da API real.
 const MOCK_GROUPS: InstitutionGroup[] = [
-  { id: 'turma-a', name: 'Turma A - Manhã' },
-  { id: 'turma-b', name: 'Turma B - Tarde' },
-  { id: 'turma-c', name: 'Turma C - Integral' },
+  { id: 'triagem-geral', name: 'Triagem Geral' },
+  { id: 'ortopedia', name: 'Ortopedia' },
+  { id: 'pediatria', name: 'Pediatria' },
 ];
 
-// Fatia aproximada do volume total de cada turma, usada só para o mock deixar
-// visível que o filtro por turma realmente muda os dados exibidos.
+// Fatia aproximada do volume total de cada setor, usada só para o mock deixar
+// visível que o filtro por setor realmente muda os dados exibidos.
 const MOCK_GROUP_WEIGHT: Record<string, number> = {
-  'turma-a': 0.45,
-  'turma-b': 0.32,
-  'turma-c': 0.23,
+  'triagem-geral': 0.45,
+  ortopedia: 0.32,
+  pediatria: 0.23,
 };
 
 const MOCK_DATA_BY_PERIOD: Record<DashboardPeriod, Omit<InstitutionDashboardData, 'groups'>> = {

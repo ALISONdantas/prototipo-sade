@@ -215,7 +215,7 @@ export default function InstitutionDashboard() {
 
   const groupId = selectedGroupId === ALL_GROUPS_KEY ? undefined : selectedGroupId;
   const selectedGroupLabel =
-    groups.find((group) => group.id === selectedGroupId)?.name ?? 'Todas as turmas';
+    groups.find((group) => group.id === selectedGroupId)?.name ?? 'Todos os setores';
 
   const fetchDashboard = () => {
     const requestId = ++requestIdRef.current;
@@ -341,12 +341,12 @@ export default function InstitutionDashboard() {
           ))}
         </HStack>
 
-        {/* Filtro de turma/grupo */}
+        {/* Filtro de setor */}
         {groups.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} mb="$4">
             <HStack space="sm">
               <FilterPill
-                label="Todas as turmas"
+                label="Todos os setores"
                 active={selectedGroupId === ALL_GROUPS_KEY}
                 onPress={() => setSelectedGroupId(ALL_GROUPS_KEY)}
               />

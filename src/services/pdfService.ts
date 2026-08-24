@@ -119,7 +119,7 @@ export const generateAndShareInstitutionDashboardReport = async (
       <div class="header">
         <div class="logo">SADE</div>
         <div class="subtitle">Relatório Consolidado da Instituição</div>
-        <div class="subtitle">Período: ${PERIOD_LABEL[period]} · Turma: ${groupLabel}</div>
+        <div class="subtitle">Período: ${PERIOD_LABEL[period]} · Setor: ${groupLabel}</div>
         <div class="subtitle">Gerado em: ${new Date().toLocaleString('pt-BR')}</div>
       </div>
 
