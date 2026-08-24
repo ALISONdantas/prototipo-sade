@@ -23,10 +23,13 @@ const genderOptions = [
   { label: 'Outro', value: 'O' },
 ];
 
+// Só entram aqui instituições que de fato realizam o teste e têm um
+// profissional de saúde responsável — por isso sem "Escola" (ela continua
+// existindo como Unidade de Atendimento que o Profissional visita).
 const institutionTypeOptions = [
-  { label: 'Escola', value: 'school' },
+  { label: 'Hospital', value: 'hospital' },
+  { label: 'Posto de Saúde', value: 'health_center' },
   { label: 'Clínica', value: 'clinic' },
-  { label: 'Centro de Saúde', value: 'health_center' },
 ];
 
 export default function RegisterScreen() {
