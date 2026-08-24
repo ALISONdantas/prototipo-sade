@@ -8,14 +8,6 @@ import AppStack from './AppStack';
 
 const linking = {
   prefixes: ['sade://'],
-  config: {
-    screens: {
-      ResetPassword: {
-        path: 'reset-password',
-        parse: { token: (token: string) => token },
-      },
-    },
-  },
 };
 
 export default function RootNavigator() {

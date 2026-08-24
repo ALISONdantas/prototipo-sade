@@ -5,7 +5,6 @@ import ProfileSelectScreen from '../screens/Auth/ProfileSelectScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
 import EmailConfirmationScreen from '../screens/Auth/EmailConfirmationScreen';
 import ForgotPasswordScreen from '../screens/Auth/ForgotPasswordScreen';
-import ResetPasswordScreen from '../screens/Auth/ResetPasswordScreen';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -13,7 +12,6 @@ export type AuthStackParamList = {
   Register: { role: 'PATIENT' | 'PROFESSIONAL' | 'INSTITUTION' };
   EmailConfirmation: { email: string; type: 'register' | 'forgot_password' };
   ForgotPassword: undefined;
-  ResetPassword: { token: string };
 };
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -26,7 +24,6 @@ export default function AuthStack() {
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </Stack.Navigator>
   );
 }
