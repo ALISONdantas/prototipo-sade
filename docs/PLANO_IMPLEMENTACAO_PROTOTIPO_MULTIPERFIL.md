@@ -98,10 +98,14 @@ flowchart TD
 - Um botão/card final: **"+ Adicionar novo dependente"**, abrindo o mesmo `AddDependentBottomSheet` já existente; ao salvar (`onSuccess`), a lista recarrega e o novo dependente já entra pré-selecionado, avançando automaticamente para a próxima etapa (atende "voltar para o teste").
 - Ao selecionar, guarda em memória (params de navegação) `{ dependentId?: string; age: number; sex: 'M'|'F'|'O' }` já resolvidos — nenhuma tela seguinte volta a perguntar isso.
 
-**`HealthHistoryScreen` (novo arquivo `src/screens/Exam/HealthHistoryScreen.tsx`):**
-- É a `AnamnesisScreen` atual **menos** os campos "Idade" e "Sexo Biol." (que saem do formulário) **mais** os dados vindos da tela anterior via `route.params`.
-- Mantém as 3 perguntas (`hasPain`, `familyHistory`, `hadSurgery`), a barra de progresso (agora "Passo 2 de 3"), `useConfirmExitOnBack`, `useToast` e a chamada a `createExam` do `examStore` — o `payload` para `createExamDraft` continua **idêntico** ao de hoje (`age`, `sex`, `dependent_id` opcional, mais as 3 respostas).
-- `AnamnesisScreen.tsx` é removida do `ExamStack`.
+**`HealthHistoryScreen` (novo arquivo `src/screens/Exam/HealthHistoryScreen.tsx`, papel de "Passo 2 de 3: Anamnese"):**
+> **Atualização (RF04):** o requisito funcional RF04 exige que o formulário de anamnese colete **idade, sexo, histórico familiar, doenças pré-existentes, peso, altura, dor e cirurgias anteriores**, e que ele seja **refeito em todo exame** (não reaproveitado do teste anterior), já que peso/altura mudam com o crescimento da criança. Isso substitui a decisão D2 original (que reduzia demais o formulário) — a versão implementada é:
+- Idade e sexo continuam vindo pré-preenchidos do cadastro do dependente/usuário via `route.params` (não precisam ser redigitados a cada exame — mantém o requisito original 3), mas aparecem **visíveis** no formulário (campos somente leitura), atendendo à letra do RF04.
+- Peso (kg) e altura (cm): **inputs obrigatórios**, sempre em branco a cada exame — não herdam valor do teste anterior.
+- Doenças pré-existentes: campo de texto livre opcional.
+- As 3 perguntas de saúde (`hasPain`, `familyHistory`, `hadSurgery`) continuam como toggles Sim/Não; quando `hadSurgery` é "Sim", aparece um campo opcional para descrever a cirurgia.
+- Mantém a barra de progresso ("Passo 2 de 3: Anamnese"), `useConfirmExitOnBack`, `useToast` e a chamada a `createExam` do `examStore`. `CreateExamDraftPayload` (`examService.ts`) ganha `weight_kg`, `height_cm`, `pre_existing_conditions?` e `surgery_detail?` — campos que o backend real (`draft_exams`) ainda não possui (eles existem só na entidade `anamneses`, mais completa — ver `sade-core/src/infra/db/models/anamnese.py`), então por ora só sobrevivem no mock.
+- `AnamnesisScreen.tsx` é removida do `ExamStack` (a nova tela assume esse papel sob o nome de rota `HealthHistory`).
 
 **`src/navigation/ExamStack.tsx` — novo `ExamStackParamList`:**
 ```ts
@@ -262,7 +266,7 @@ Adicionar, na ordem:
 |---|---------|---------------------|
 | 1 | Usuário sem dependentes toca "Iniciar Novo Exame" | Cai direto no formulário de novo dependente; ao salvar, entra automaticamente no exame já com esse dependente selecionado |
 | 2 | Usuário com dependentes toca "Iniciar Novo Exame" | Vê `SelectTesteeScreen` com a lista + opção "Eu mesmo" + "+ Novo dependente" |
-| 3 | Usuário seleciona um dependente | `HealthHistoryScreen` não mostra campos de idade/sexo; ao concluir, `POST /exams` recebe `age`/`sex` corretos derivados do dependente |
+| 3 | Usuário seleciona um dependente | `HealthHistoryScreen` mostra idade/sexo pré-preenchidos (somente leitura) e pede peso, altura e as 3 perguntas de saúde do zero (RF04); ao concluir, `POST /exams` recebe todos os campos da anamnese |
 | 4 | Usuário seleciona "Eu mesmo" | Mesmo resultado do item 3, usando dados do usuário logado |
 | 5 | Cadastro sem marcar o Termo de Consentimento | Botão "Criar conta" mostra erro inline e não dispara a requisição |
 | 6 | Editar perfil, alterar telefone, salvar | Tela volta ao modo leitura com o novo valor persistido (local, se o backend ainda não aceitar) |
