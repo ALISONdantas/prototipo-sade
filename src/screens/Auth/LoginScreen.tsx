@@ -232,19 +232,6 @@ export default function LoginScreen() {
             </Text>
           </Pressable>
         </HStack>
-
-        {/* [DEV] Atalho temporário para testar ResetPasswordScreen */}
-        <Pressable
-          mt="$6"
-          alignSelf="center"
-          onPress={() => navigation.navigate('ResetPassword', { token: 'token-de-teste-dev' })}
-          hitSlop={10}
-          accessibilityRole="button"
-        >
-          <Text color="$textLight400" fontSize="$xs">
-            [DEV] Testar tela de redefinir senha
-          </Text>
-        </Pressable>
       </VStack>
     </Box>
   );
