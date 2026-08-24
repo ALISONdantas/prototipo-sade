@@ -1,6 +1,7 @@
 import { AuthStoreSlice, AuthStoreState, UpdateProfileData } from './types';
 import * as SecureStore from '../../utils/storage';
 import { api } from '../../services/api';
+import { mockFetchUser } from '../../services/mockAuth';
 
 export const createUserSlice: AuthStoreSlice<
   Pick<AuthStoreState, 'user' | 'fetchUser' | 'updateProfile'>
@@ -13,9 +14,17 @@ export const createUserSlice: AuthStoreSlice<
       const response = await api.get('/auth/me');
       set({ user: response.data, isAuthenticated: true });
     } catch (error) {
-      console.error('Erro ao buscar dados do usuário:', error);
-      await SecureStore.deleteItemAsync('sade_access_token');
-      set({ user: null, isAuthenticated: false });
+      // Sem backend por trás (ex.: GitHub Pages) — se o token guardado for de
+      // uma sessão mockada (ver mockAuth.ts), a sessão continua normalmente.
+      const token = await SecureStore.getItemAsync('sade_access_token');
+      const mockUser = mockFetchUser(token);
+      if (mockUser) {
+        set({ user: mockUser, isAuthenticated: true });
+      } else {
+        console.error('Erro ao buscar dados do usuário:', error);
+        await SecureStore.deleteItemAsync('sade_access_token');
+        set({ user: null, isAuthenticated: false });
+      }
     } finally {
       set({ isLoading: false });
     }

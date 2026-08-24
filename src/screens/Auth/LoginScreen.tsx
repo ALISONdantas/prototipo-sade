@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../services/api';
+import { mockLogin } from '../../services/mockAuth';
 import { Button } from '../../components/Button';
 import { colors } from '../../theme';
 
@@ -68,7 +69,14 @@ export default function LoginScreen() {
           setErrorMessage('Erro inesperado. Tente novamente.');
         }
       } else if (error.request) {
-        // Sem resposta do servidor (offline / timeout)
+        // Sem resposta do servidor (ex.: build estático sem backend por trás,
+        // como o protótipo publicado no GitHub Pages) — tenta as contas de
+        // demonstração mockadas antes de desistir.
+        const mock = mockLogin(email, password);
+        if (mock) {
+          await login(mock.access_token);
+          return;
+        }
         setErrorMessage('Não foi possível conectar ao servidor. Verifique sua conexão.');
       } else {
         setErrorMessage('Ocorreu um erro inesperado.');
