@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, Pres
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Clock, ClipboardCheck } from 'lucide-react-native';
+import { Clock, ClipboardCheck, ChevronLeft } from 'lucide-react-native';
 
 import { colors, spacing, typography, radius } from '../../theme';
 import { EmptyState } from '../../components/EmptyState';
@@ -85,6 +85,15 @@ export default function ExamHistoryScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
+        {!isProfessional && (
+          <Pressable
+            style={styles.backButton}
+            onPress={() => navigation.navigate('HomeTab')}
+            accessibilityLabel="Voltar para o Início"
+          >
+            <ChevronLeft color={colors.textPrimary} size={26} />
+          </Pressable>
+        )}
         <Text style={styles.headerTitle}>Histórico de Exames</Text>
       </View>
 
@@ -149,9 +158,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
+  },
+  backButton: {
+    padding: spacing.xs,
+    marginRight: spacing.xs,
   },
   headerTitle: {
     ...typography.h3,

@@ -9,8 +9,9 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { Users, Plus } from 'lucide-react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { Users, Plus, ChevronLeft } from 'lucide-react-native';
 
 import { colors, spacing, typography } from '../../theme';
 import { EmptyState } from '../../components/EmptyState';
@@ -19,8 +20,12 @@ import { DependentCard } from '../../components/DependentCard';
 import { AddDependentBottomSheet } from '../../components/AddDependentBottomSheet';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { getDependents, deleteDependent, Dependent } from '../../services/dependentsService';
+import { AppTabParamList } from '../../navigation/AppStack';
+
+type NavigationProp = BottomTabNavigationProp<AppTabParamList>;
 
 export default function DependentsListScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +118,13 @@ export default function DependentsListScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('HomeTab')}
+          accessibilityLabel="Voltar para o Início"
+        >
+          <ChevronLeft color={colors.textPrimary} size={26} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Meus Dependentes</Text>
       </View>
 
@@ -187,9 +199,12 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
   },
+  backButton: {
+    padding: spacing.xs,
+    marginRight: spacing.xs,
+  },
   headerTitle: {
     ...typography.h3,
-    marginLeft: spacing.md,
   },
   listContent: {
     padding: spacing.md,
