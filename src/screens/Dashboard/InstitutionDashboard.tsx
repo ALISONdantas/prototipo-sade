@@ -17,7 +17,6 @@ import {
   Building2,
   Activity,
   Users,
-  AlertTriangle,
   PlusCircle,
   Download,
   CheckSquare,
@@ -62,10 +61,11 @@ const POSITIVE_RATE_COLOR: Record<string, string> = {
 };
 
 // TODO: substituir por chamada real quando o backend expuser métricas da instituição.
+// Sem métrica de "Alertas" aqui — casos com indícios positivos vão direto
+// para a tela do Profissional responsável, não para a Instituição.
 const METRICS = [
   { key: 'exams', label: 'Exames Realizados', value: 0, icon: Activity },
   { key: 'patients', label: 'Pacientes Ativos', value: 0, icon: Users },
-  { key: 'alerts', label: 'Alertas', value: 0, icon: AlertTriangle },
 ];
 
 const MOCK_EXAMS = [
@@ -297,11 +297,12 @@ export default function InstitutionDashboard() {
           </HStack>
         </HStack>
 
-        {/* Big CTA for new triage */}
+        {/* Big CTA for new triage — instituição não faz teste em si mesma,
+            só em pacientes/alunos, mesma lógica de busca/cadastro do Profissional. */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Iniciar nova triagem"
-          onPress={() => navigation.navigate('ExamFlow', { screen: 'SelectTestee' })}
+          onPress={() => navigation.navigate('ExamFlow', { screen: 'PatientPicker' })}
         >
           <Box bg={INSTITUTION_ACCENT} borderRadius="$2xl" p="$6" alignItems="center" mb="$8">
             <PlusCircle size={40} color={colors.white} />
@@ -309,7 +310,7 @@ export default function InstitutionDashboard() {
               Realizar Triagem
             </Text>
             <Text color={INSTITUTION_ACCENT_LIGHT} fontSize="$sm" mt="$1">
-              Novo Teste de Adams interno
+              Buscar ou cadastrar paciente
             </Text>
           </Box>
         </Pressable>
@@ -323,7 +324,6 @@ export default function InstitutionDashboard() {
                 label={metric.label}
                 value={metric.value}
                 icon={metric.icon}
-                onPress={metric.key === 'alerts' ? () => navigation.navigate('Alerts') : undefined}
               />
             ))}
           </HStack>
