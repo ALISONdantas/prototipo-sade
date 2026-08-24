@@ -16,6 +16,7 @@ import { ChevronLeft } from 'lucide-react-native';
 
 import { colors, spacing, typography } from '../../theme';
 import { Button } from '../../components/Button';
+import { Input } from '../../components/Input';
 import { Toast } from '../../components/Toast';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useExamStore } from '../../store/examStore';
@@ -26,16 +27,27 @@ import { ExamStackParamList } from '../../navigation/ExamStack';
 type HealthHistoryRouteProp = RouteProp<ExamStackParamList, 'HealthHistory'>;
 type NavigationProp = NativeStackNavigationProp<ExamStackParamList>;
 
+const SEX_LABEL: Record<string, string> = { M: 'Masculino', F: 'Feminino', O: 'Outro' };
+
+// RF04 — Formulário de Anamnese: idade, sexo, histórico familiar, doenças
+// pré-existentes, peso, altura, dor e cirurgias anteriores. Repetido em TODO
+// exame (não é reaproveitado do teste anterior), porque essas informações
+// mudam com o tempo — em especial peso e altura de crianças em crescimento.
 export default function HealthHistoryScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<HealthHistoryRouteProp>();
   const { dependentId, patientId, dependentName, age, sex } = route.params;
 
-  // Form State — idade e sexo já vêm resolvidos da tela anterior
-  // (SelectTesteeScreen/PatientPickerScreen), não são mais digitados aqui.
-  const [familyHistory, setFamilyHistory] = useState(false);
+  // Idade e sexo vêm pré-preenchidos do cadastro do dependente/paciente (não
+  // precisam ser digitados de novo a cada exame), mas continuam visíveis no
+  // formulário de anamnese, como pede o RF04.
+  const [weight, setWeight] = useState('');
+  const [height, setHeight] = useState('');
+  const [familyHistory, setFamilyHistory] = useState<boolean | null>(null);
+  const [preExistingConditions, setPreExistingConditions] = useState('');
   const [hasPain, setHasPain] = useState<boolean | null>(null);
-  const [hadSurgery, setHadSurgery] = useState(false);
+  const [hadSurgery, setHadSurgery] = useState<boolean | null>(null);
+  const [surgeryDetail, setSurgeryDetail] = useState('');
 
   const { createExam, isSubmitting: loading } = useExamStore();
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(true);
@@ -55,9 +67,9 @@ export default function HealthHistoryScreen() {
   };
 
   const handleNext = async () => {
-    if (hasPain === null) {
+    if (hasPain === null || familyHistory === null || hadSurgery === null || !weight || !height) {
       triggerShake();
-      showToast('Responda se a pessoa sente dor.', 'error');
+      showToast('Preencha peso, altura e as perguntas de saúde.', 'error');
       return;
     }
 
@@ -65,9 +77,13 @@ export default function HealthHistoryScreen() {
       const payload = {
         age,
         sex,
+        weight_kg: Number(weight.replace(',', '.')),
+        height_cm: Number(height.replace(',', '.')),
         family_history: familyHistory,
+        pre_existing_conditions: preExistingConditions.trim() || undefined,
         has_pain: hasPain,
         had_surgery: hadSurgery,
+        surgery_detail: hadSurgery ? surgeryDetail.trim() || undefined : undefined,
         dependent_id: dependentId,
         patient_id: patientId,
       };
@@ -110,7 +126,7 @@ export default function HealthHistoryScreen() {
       </View>
 
       <View style={styles.progressContainer}>
-        <Text style={styles.progressText}>Passo 2 de 3: Histórico de saúde</Text>
+        <Text style={styles.progressText}>Passo 2 de 3: Anamnese</Text>
         <View style={styles.progressBarBackground}>
           <View style={[styles.progressBarFill, { width: '66.66%' }]} />
         </View>
@@ -127,9 +143,50 @@ export default function HealthHistoryScreen() {
                 {dependentName ? `Sobre ${dependentName}` : 'Sobre você'}
               </Text>
               <Text style={styles.subtitleText}>
-                Idade e sexo já foram obtidos do cadastro — só precisamos confirmar o histórico
-                de saúde abaixo.
+                Este formulário é refeito a cada exame, já que peso, altura e outras respostas
+                podem mudar com o tempo — especialmente em crianças em crescimento.
               </Text>
+            </View>
+
+            <View style={styles.section}>
+              <View style={styles.readOnlyRow}>
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.readOnlyLabel}>Idade</Text>
+                  <Text style={styles.readOnlyValue}>{age} anos</Text>
+                </View>
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.readOnlyLabel}>Sexo</Text>
+                  <Text style={styles.readOnlyValue}>{SEX_LABEL[sex] || sex}</Text>
+                </View>
+              </View>
+
+              <View style={styles.row}>
+                <View style={styles.halfWidth}>
+                  <Input
+                    label="Peso (kg)"
+                    placeholder="Ex: 42.5"
+                    keyboardType="decimal-pad"
+                    value={weight}
+                    onChangeText={setWeight}
+                  />
+                </View>
+                <View style={styles.halfWidth}>
+                  <Input
+                    label="Altura (cm)"
+                    placeholder="Ex: 150"
+                    keyboardType="decimal-pad"
+                    value={height}
+                    onChangeText={setHeight}
+                  />
+                </View>
+              </View>
+
+              <Input
+                label="Doenças pré-existentes (opcional)"
+                placeholder="Ex: asma, diabetes..."
+                value={preExistingConditions}
+                onChangeText={setPreExistingConditions}
+              />
             </View>
 
             <View style={styles.section}>
@@ -156,6 +213,15 @@ export default function HealthHistoryScreen() {
                   {renderToggle('Não', hadSurgery === false, () => setHadSurgery(false))}
                 </View>
               </View>
+
+              {hadSurgery === true && (
+                <Input
+                  label="Qual cirurgia? (opcional)"
+                  placeholder="Descreva brevemente"
+                  value={surgeryDetail}
+                  onChangeText={setSurgeryDetail}
+                />
+              )}
             </View>
           </Animated.View>
         </ScrollView>
@@ -208,9 +274,20 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   content: { flex: 1, padding: spacing.lg },
-  section: { marginBottom: spacing.xl },
-  sectionTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.sm },
+  section: { marginBottom: spacing.xl, gap: spacing.md },
+  sectionTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.xs },
   subtitleText: { ...typography.small, color: colors.textSecondary },
+  readOnlyRow: { flexDirection: 'row', gap: spacing.md },
+  readOnlyField: {
+    flex: 1,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 10,
+    padding: spacing.sm,
+  },
+  readOnlyLabel: { ...typography.small, color: colors.primaryDark },
+  readOnlyValue: { ...typography.bodyBold, color: colors.primaryDark },
+  row: { flexDirection: 'row', gap: spacing.md },
+  halfWidth: { flex: 1 },
   questionContainer: { marginBottom: spacing.lg },
   questionText: { ...typography.bodyBold, color: colors.textPrimary, marginBottom: spacing.sm },
   togglesRow: { flexDirection: 'row', gap: spacing.md },

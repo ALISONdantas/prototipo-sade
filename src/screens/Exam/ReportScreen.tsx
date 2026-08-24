@@ -112,17 +112,37 @@ export default function ReportScreen() {
                 {exam.sex === 'M' ? 'Masculino' : exam.sex === 'F' ? 'Feminino' : 'Outro'}
               </Text>
             </View>
+            {exam.weight_kg != null && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Peso:</Text>
+                <Text style={styles.infoValue}>{exam.weight_kg} kg</Text>
+              </View>
+            )}
+            {exam.height_cm != null && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Altura:</Text>
+                <Text style={styles.infoValue}>{exam.height_cm} cm</Text>
+              </View>
+            )}
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Histórico Familiar:</Text>
               <Text style={styles.infoValue}>{exam.family_history ? 'Sim' : 'Não'}</Text>
             </View>
+            {!!exam.pre_existing_conditions && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Doenças pré-existentes:</Text>
+                <Text style={styles.infoValue}>{exam.pre_existing_conditions}</Text>
+              </View>
+            )}
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Sente dores:</Text>
               <Text style={styles.infoValue}>{exam.has_pain ? 'Sim' : 'Não'}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Cirurgia prévia:</Text>
-              <Text style={styles.infoValue}>{exam.had_surgery ? 'Sim' : 'Não'}</Text>
+              <Text style={styles.infoValue}>
+                {exam.had_surgery ? exam.surgery_detail || 'Sim' : 'Não'}
+              </Text>
             </View>
           </View>
 

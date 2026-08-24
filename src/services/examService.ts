@@ -6,11 +6,18 @@ export interface CreateExamDraftPayload {
   // atende — o backend ainda não modela essa relação (ver Plano de
   // Implementação, risco R1), então esse caso sempre resolve via mock.
   patient_id?: string;
+  // RF04 — formulário de anamnese completo, coletado a cada exame (idade,
+  // sexo, peso e altura podem mudar de um teste para o outro, especialmente
+  // em crianças em fase de crescimento).
   age: number;
   sex: string;
+  weight_kg: number;
+  height_cm: number;
   family_history: boolean;
+  pre_existing_conditions?: string;
   has_pain: boolean;
   had_surgery: boolean;
+  surgery_detail?: string;
 }
 
 // Backend usa o VO Gender ("male" | "female" | "prefer_not_to_say"); a UI usa "M" | "F".
@@ -35,9 +42,13 @@ export interface ExamResponse {
   status: string;
   age: number;
   sex: string;
+  weight_kg?: number;
+  height_cm?: number;
   family_history: boolean;
+  pre_existing_conditions?: string;
   has_pain: boolean;
   had_surgery: boolean;
+  surgery_detail?: string;
   created_at: string;
   evaluation?: ExamEvaluation;
 }
@@ -48,62 +59,54 @@ export interface ExamEvaluation {
   evaluatedAt: string;
 }
 
+function buildDraftResponse(
+  payload: CreateExamDraftPayload,
+  overrides: Partial<Pick<ExamResponse, 'id' | 'id_patient' | 'id_dependent'>>,
+): ExamResponse {
+  return {
+    id: overrides.id ?? 'mock-exam-' + Date.now(),
+    id_patient: overrides.id_patient ?? 'mock-patient-id',
+    id_dependent: overrides.id_dependent ?? payload.dependent_id,
+    status: 'DRAFT',
+    age: payload.age,
+    sex: payload.sex,
+    weight_kg: payload.weight_kg,
+    height_cm: payload.height_cm,
+    family_history: payload.family_history,
+    pre_existing_conditions: payload.pre_existing_conditions,
+    has_pain: payload.has_pain,
+    had_surgery: payload.had_surgery,
+    surgery_detail: payload.surgery_detail,
+    created_at: new Date().toISOString(),
+  };
+}
+
 export const createExamDraft = async (payload: CreateExamDraftPayload): Promise<ExamResponse> => {
   if (payload.patient_id) {
     // Backend não modela exame de Profissional sobre Paciente ainda — mock direto.
     console.warn('Mocking createExamDraft para exame de Profissional (patient_id)');
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return {
-      id: 'mock-exam-patient-' + Date.now(),
-      id_patient: payload.patient_id,
-      status: 'DRAFT',
-      age: payload.age,
-      sex: payload.sex,
-      family_history: payload.family_history,
-      has_pain: payload.has_pain,
-      had_surgery: payload.had_surgery,
-      created_at: new Date().toISOString(),
-    };
+    return buildDraftResponse(payload, { id: 'mock-exam-patient-' + Date.now(), id_patient: payload.patient_id });
   }
 
   try {
     // Tenta chamar a API. O backend recebe "sex" como Gender ("male"/"female"/"prefer_not_to_say")
-    // e responde apenas com a confirmacao do rascunho (id_draft, id_user, id_dependent, message),
-    // entao adaptamos os dois lados para o formato que o restante do app espera.
+    // e responde apenas com a confirmacao do rascunho (id_draft, id_user, id_dependent, message).
+    // Os campos de anamnese completos do RF04 (peso, altura, doenças pré-existentes,
+    // detalhe de cirurgia) ainda não têm contrato real no backend — seguem no payload
+    // para quando existir, mas hoje só sobrevivem no mock local.
     const response = await api.post<DraftExamApiResponse>('/exams', {
       ...payload,
       sex: SEX_TO_GENDER[payload.sex] || payload.sex,
     });
     const draft = response.data;
-    return {
-      id: draft.id_draft,
-      id_patient: draft.id_user,
-      id_dependent: draft.id_dependent || payload.dependent_id,
-      status: 'DRAFT',
-      age: payload.age,
-      sex: payload.sex,
-      family_history: payload.family_history,
-      has_pain: payload.has_pain,
-      had_surgery: payload.had_surgery,
-      created_at: new Date().toISOString(),
-    };
+    return buildDraftResponse(payload, { id: draft.id_draft, id_patient: draft.id_user, id_dependent: draft.id_dependent || payload.dependent_id });
   } catch (error: any) {
     // Protótipo: qualquer falha do backend cai no mock, para nunca travar a
     // navegação entre telas.
     console.warn('Mocking createExamDraft (Backend indisponível ou com erro)', error?.message);
     await new Promise((resolve) => setTimeout(resolve, 800));
-    return {
-      id: 'mock-exam-' + Date.now(),
-      id_patient: 'mock-patient-id',
-      id_dependent: payload.dependent_id,
-      status: 'DRAFT',
-      age: payload.age,
-      sex: payload.sex,
-      family_history: payload.family_history,
-      has_pain: payload.has_pain,
-      had_surgery: payload.had_surgery,
-      created_at: new Date().toISOString(),
-    };
+    return buildDraftResponse(payload, {});
   }
 };
 
