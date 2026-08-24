@@ -16,20 +16,24 @@ export interface User {
 
 export interface RegisterData {
   fullName: string;
-  cpf: string;
   email: string;
   password: string;
-  birthDate: string;
-  gender: string;
   role: 'PATIENT' | 'PROFESSIONAL' | 'INSTITUTION';
+  phone: string;
+  termsAccepted: boolean;
+  // Pessoa física — não se aplica a Instituição.
+  cpf?: string;
+  birthDate?: string;
+  gender?: string;
+  // Profissional
   crm?: string;
   especialidade?: string;
   conselho?: string;
+  // Instituição — não é pessoa física, por isso não pede CPF/nascimento/gênero.
   cnpj?: string;
   institutionName?: string;
-  responsibleName?: string;
-  phone: string;
-  termsAccepted: boolean;
+  institutionType?: string;
+  institutionAddress?: string;
 }
 
 export interface UpdateProfileData {

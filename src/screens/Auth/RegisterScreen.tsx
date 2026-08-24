@@ -23,10 +23,17 @@ const genderOptions = [
   { label: 'Outro', value: 'O' },
 ];
 
+const institutionTypeOptions = [
+  { label: 'Escola', value: 'school' },
+  { label: 'Clínica', value: 'clinic' },
+  { label: 'Centro de Saúde', value: 'health_center' },
+];
+
 export default function RegisterScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { role } = route.params;
+  const isInstitution = role === 'INSTITUTION';
 
   const [fullName, setFullName] = useState('');
   const [cpf, setCpf] = useState('');
@@ -41,7 +48,8 @@ export default function RegisterScreen() {
   const [conselho, setConselho] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [institutionName, setInstitutionName] = useState('');
-  const [responsibleName, setResponsibleName] = useState('');
+  const [institutionType, setInstitutionType] = useState('');
+  const [institutionAddress, setInstitutionAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [fullNameError, setFullNameError] = useState('');
@@ -104,16 +112,15 @@ export default function RegisterScreen() {
 
     // Protótipo: o checkbox de consentimento fica visível (RNF10), mas não
     // bloqueia a navegação — o objetivo aqui é validar as telas livremente.
-    if (
-      !fullName.trim() ||
-      !cpf.trim() ||
-      !phone.trim() ||
-      !email.trim() ||
-      !password.trim() ||
-      !confirmPassword.trim() ||
-      !birthDate.trim() ||
-      !gender
-    ) {
+    // Instituição não é pessoa física: sem CPF, nascimento ou gênero — em
+    // troca, pede os dados da própria instituição (CNPJ, tipo, endereço).
+    const baseFieldsMissing =
+      !fullName.trim() || !phone.trim() || !email.trim() || !password.trim() || !confirmPassword.trim();
+    const personFieldsMissing = !isInstitution && (!cpf.trim() || !birthDate.trim() || !gender);
+    const institutionFieldsMissing =
+      isInstitution && (!cnpj.trim() || !institutionName.trim() || !institutionType || !institutionAddress.trim());
+
+    if (baseFieldsMissing || personFieldsMissing || institutionFieldsMissing) {
       setErrorMessage('Preencha todos os campos obrigatórios.');
       return;
     }
@@ -128,7 +135,7 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (cpf.replace(/\D/g, '').length < 11) {
+    if (!isInstitution && cpf.replace(/\D/g, '').length < 11) {
       setCpfError('O CPF deve ter 11 dígitos.');
       return;
     }
@@ -137,16 +144,14 @@ export default function RegisterScreen() {
     try {
       const data: RegisterData = {
         fullName,
-        cpf,
         phone,
         email,
         password,
-        birthDate,
-        gender,
         role,
         termsAccepted,
+        ...(!isInstitution && { cpf, birthDate, gender }),
         ...(role === 'PROFESSIONAL' && { crm, especialidade, conselho }),
-        ...(role === 'INSTITUTION' && { cnpj, institutionName, responsibleName }),
+        ...(isInstitution && { cnpj, institutionName, institutionType, institutionAddress }),
       };
       await register(data);
       navigation.navigate('EmailConfirmation', { email, type: 'register' });
@@ -300,7 +305,7 @@ export default function RegisterScreen() {
               )}
 
               <Input
-                label="Nome completo"
+                label={isInstitution ? 'Nome do responsável' : 'Nome completo'}
                 placeholder="Maria Silva"
                 value={fullName}
                 onChangeText={(text: string) => {
@@ -312,18 +317,20 @@ export default function RegisterScreen() {
                 helperText={fullNameError}
               />
 
-              <Input
-                label="CPF"
-                placeholder="000.000.000-00"
-                value={cpf}
-                onChangeText={(text: string) => {
-                  setCpf(formatCpf(text));
-                  setCpfError('');
-                }}
-                keyboardType="numeric"
-                error={!!cpfError}
-                helperText={cpfError}
-              />
+              {!isInstitution && (
+                <Input
+                  label="CPF"
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChangeText={(text: string) => {
+                    setCpf(formatCpf(text));
+                    setCpfError('');
+                  }}
+                  keyboardType="numeric"
+                  error={!!cpfError}
+                  helperText={cpfError}
+                />
+              )}
 
               <Input
                 label="Telefone"
@@ -399,61 +406,65 @@ export default function RegisterScreen() {
                 helperText={confirmPasswordError}
               />
 
-              <Input
-                label="Data de nascimento"
-                placeholder="DD/MM/AAAA"
-                value={birthDate}
-                onChangeText={(text: string) => {
-                  setBirthDate(formatBirthDate(text));
-                  setBirthDateError('');
-                }}
-                keyboardType="numeric"
-                error={!!birthDateError}
-                helperText={birthDateError}
-              />
+              {!isInstitution && (
+                <Input
+                  label="Data de nascimento"
+                  placeholder="DD/MM/AAAA"
+                  value={birthDate}
+                  onChangeText={(text: string) => {
+                    setBirthDate(formatBirthDate(text));
+                    setBirthDateError('');
+                  }}
+                  keyboardType="numeric"
+                  error={!!birthDateError}
+                  helperText={birthDateError}
+                />
+              )}
 
-              {/* Gênero */}
-              <VStack space="md">
-                <Text color="$black" fontWeight="$bold">
-                  Gênero
-                </Text>
-                <HStack
-                  space="md"
-                  flexWrap="wrap"
-                  borderWidth={genderError ? 1 : 0}
-                  borderColor="$red600"
-                  borderRadius="$md"
-                  p={genderError ? '$2' : 0}
-                >
-                  {genderOptions.map((option) => (
-                    <Pressable
-                      key={option.value}
-                      borderWidth={1}
-                      borderColor={gender === option.value ? '#2A5D44' : '$borderLight300'}
-                      bg={gender === option.value ? '$green100' : '$white'}
-                      borderRadius="$md"
-                      px="$4"
-                      py="$2"
-                      onPress={() => {
-                        setGender(option.value);
-                        setGenderError('');
-                      }}
-                    >
-                      <Text
-                        color={gender === option.value ? '#2A5D44' : '$textLight500'}
-                        fontWeight={gender === option.value ? '$bold' : '$normal'}
-                      >
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </HStack>
-                {genderError !== '' && (
-                  <Text color="$red600" fontSize="$xs">
-                    {genderError}
+              {/* Gênero — não se aplica a Instituição (não é pessoa física) */}
+              {!isInstitution && (
+                <VStack space="md">
+                  <Text color="$black" fontWeight="$bold">
+                    Gênero
                   </Text>
-                )}
-              </VStack>
+                  <HStack
+                    space="md"
+                    flexWrap="wrap"
+                    borderWidth={genderError ? 1 : 0}
+                    borderColor="$red600"
+                    borderRadius="$md"
+                    p={genderError ? '$2' : 0}
+                  >
+                    {genderOptions.map((option) => (
+                      <Pressable
+                        key={option.value}
+                        borderWidth={1}
+                        borderColor={gender === option.value ? '#2A5D44' : '$borderLight300'}
+                        bg={gender === option.value ? '$green100' : '$white'}
+                        borderRadius="$md"
+                        px="$4"
+                        py="$2"
+                        onPress={() => {
+                          setGender(option.value);
+                          setGenderError('');
+                        }}
+                      >
+                        <Text
+                          color={gender === option.value ? '#2A5D44' : '$textLight500'}
+                          fontWeight={gender === option.value ? '$bold' : '$normal'}
+                        >
+                          {option.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </HStack>
+                  {genderError !== '' && (
+                    <Text color="$red600" fontSize="$xs">
+                      {genderError}
+                    </Text>
+                  )}
+                </VStack>
+              )}
 
               <Animated.View
                 style={{
@@ -493,7 +504,7 @@ export default function RegisterScreen() {
                 style={{
                   maxHeight: institutionAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0, 500],
+                    outputRange: [0, 750],
                   }),
                   overflow: 'hidden',
                 }}
@@ -513,11 +524,39 @@ export default function RegisterScreen() {
                     onChangeText={setInstitutionName}
                     autoCapitalize="words"
                   />
+
+                  <VStack space="md">
+                    <Text color="$black" fontWeight="$bold">
+                      Tipo de Instituição
+                    </Text>
+                    <HStack space="md" flexWrap="wrap">
+                      {institutionTypeOptions.map((option) => (
+                        <Pressable
+                          key={option.value}
+                          borderWidth={1}
+                          borderColor={institutionType === option.value ? '#2A5D44' : '$borderLight300'}
+                          bg={institutionType === option.value ? '$green100' : '$white'}
+                          borderRadius="$md"
+                          px="$4"
+                          py="$2"
+                          onPress={() => setInstitutionType(option.value)}
+                        >
+                          <Text
+                            color={institutionType === option.value ? '#2A5D44' : '$textLight500'}
+                            fontWeight={institutionType === option.value ? '$bold' : '$normal'}
+                          >
+                            {option.label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </HStack>
+                  </VStack>
+
                   <Input
-                    label="Nome do Responsável"
-                    placeholder="Nome completo do responsável"
-                    value={responsibleName}
-                    onChangeText={setResponsibleName}
+                    label="Endereço"
+                    placeholder="Rua, número — Bairro, Cidade"
+                    value={institutionAddress}
+                    onChangeText={setInstitutionAddress}
                     autoCapitalize="words"
                   />
                 </VStack>

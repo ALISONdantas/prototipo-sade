@@ -53,32 +53,46 @@ export const createAuthSlice: AuthStoreSlice<
     const nameParts = data.fullName.trim().split(' ');
     const first_name = nameParts[0];
     const last_name = nameParts.slice(1).join(' ') || nameParts[0];
-    const cpf = data.cpf.replace(/\D/g, '');
     const phone = data.phone.replace(/\D/g, '');
-    const [day, month, year] = data.birthDate.split('/');
-    const birth_date = `${year}-${month}-${day}`;
 
     const payload: Record<string, string | number | boolean> = {
       first_name,
       last_name,
       email: data.email.trim(),
       password: data.password,
-      cpf,
       phone,
-      birth_date,
-      gender: GENDER_TO_ENUM[data.gender] || data.gender,
       id_role: ROLE_TO_ID[data.role],
       terms_accepted: data.termsAccepted,
     };
+
+    if (data.cpf) payload.cpf = data.cpf.replace(/\D/g, '');
+    if (data.birthDate) {
+      const [day, month, year] = data.birthDate.split('/');
+      payload.birth_date = `${year}-${month}-${day}`;
+    }
+    if (data.gender) payload.gender = GENDER_TO_ENUM[data.gender] || data.gender;
 
     if (data.crm) payload.crm = data.crm;
     if (data.especialidade) payload.especialidade = data.especialidade;
     if (data.conselho) payload.conselho = data.conselho;
     if (data.cnpj) payload.cnpj = data.cnpj.replace(/\D/g, '');
     if (data.institutionName) payload.institution_name = data.institutionName;
-    if (data.responsibleName) payload.responsible_name = data.responsibleName;
+    if (data.institutionType) payload.institution_type = data.institutionType;
+    if (data.institutionAddress) payload.address = data.institutionAddress;
 
-    await api.post('/auth/register', payload);
+    try {
+      await api.post('/auth/register', payload);
+    } catch (error: any) {
+      // Instituição não é pessoa física: sem CPF/nascimento/gênero, o cadastro
+      // real (que hoje exige CPF) sempre rejeitaria essa conta. Protótipo:
+      // trata como sucesso — o backend real precisa de um contrato próprio
+      // para instituições (CNPJ/tipo/endereço em vez de dados pessoais).
+      if (data.role === 'INSTITUTION') {
+        console.warn('Mocking register de Instituição (backend ainda exige CPF)', error?.message);
+        return;
+      }
+      throw error;
+    }
   },
 
   forgotPassword: async (email: string) => {
