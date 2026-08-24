@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Box,
   Text,
@@ -11,7 +11,7 @@ import {
   Icon,
 } from '@gluestack-ui/themed';
 import { LogOut, FileText, Stethoscope, Building2, AlertTriangle, ChevronRight } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppTabParamList, AppStackParamList } from '../../navigation/AppStack';
@@ -110,9 +110,13 @@ export default function ProfessionalDashboard() {
 
   const [units, setUnits] = useState<AttendedUnit[]>([]);
 
-  useEffect(() => {
-    getAttendedUnits().then(setUnits);
-  }, []);
+  // useFocusEffect (não useEffect) para refletir na hora unidades adicionadas
+  // ou removidas na aba "Unidades de Atendimento".
+  useFocusEffect(
+    useCallback(() => {
+      getAttendedUnits().then(setUnits);
+    }, []),
+  );
 
   const handleStartExam = () => {
     navigation.navigate('ExamFlow', { screen: 'PatientPicker' });

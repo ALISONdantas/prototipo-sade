@@ -143,9 +143,16 @@ export default function AlertsScreen() {
     }
   };
 
+  // No perfil Profissional, a tela foca só nos casos com indícios detectados
+  // (positivos) — resultados inconclusivos ficam de fora dessa lista.
+  const visibleAlerts = isProfessional
+    ? alerts.filter((alert) => alert.result === 'POSITIVE')
+    : alerts;
+  const activeAlertsCount = visibleAlerts.filter((alert) => !alert.resolved).length;
+
   return (
     <Box flex={1} bg={colors.background} pt="$12" px="$6">
-      <HStack alignItems="center" space="md" mb="$6">
+      <HStack alignItems="center" space="md" mb="$1">
         <Pressable onPress={() => navigation.goBack()} p="$1">
           <ArrowLeft color={colors.textPrimary} size={24} />
         </Pressable>
@@ -154,13 +161,19 @@ export default function AlertsScreen() {
         </Text>
       </HStack>
 
+      {!isLoading && !error && (
+        <Text color={colors.textSecondary} fontSize="$sm" ml="$8" mb="$5">
+          {activeAlertsCount} {activeAlertsCount === 1 ? 'paciente' : 'pacientes'} em alerta
+        </Text>
+      )}
+
       {error ? (
         <ErrorState message={error} onRetry={fetchAlerts} />
       ) : isLoading ? (
         <Box py="$12" alignItems="center" justifyContent="center">
           <ActivityIndicator size="large" color={colors.primary} />
         </Box>
-      ) : alerts.length === 0 ? (
+      ) : visibleAlerts.length === 0 ? (
         <EmptyState
           title="Nenhum alerta"
           subtitle="Exames com indícios que precisam de encaminhamento médico aparecerão aqui."
@@ -168,7 +181,7 @@ export default function AlertsScreen() {
         />
       ) : (
         <FlatList
-          data={alerts}
+          data={visibleAlerts}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <AlertCard

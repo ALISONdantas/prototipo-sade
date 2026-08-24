@@ -3,6 +3,8 @@ export * from './Input';
 export * from './ProgressBar';
 export * from './EmptyState';
 export * from './AddDependentBottomSheet';
+export * from './AddPatientBottomSheet';
+export * from './AddUnitBottomSheet';
 export * from './DeleteDependentModal';
 export * from './ErrorState';
 export * from './MetricCard';

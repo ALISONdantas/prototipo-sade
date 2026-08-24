@@ -10,11 +10,12 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronLeft, User } from 'lucide-react-native';
+import { ChevronLeft, User, Plus } from 'lucide-react-native';
 
 import { colors, spacing, typography } from '../../theme';
 import { Input } from '../../components/Input';
 import { EmptyState } from '../../components/EmptyState';
+import { AddPatientBottomSheet } from '../../components/AddPatientBottomSheet';
 import { searchPatients, Patient } from '../../services/patientsService';
 import { ExamStackParamList } from '../../navigation/ExamStack';
 
@@ -25,6 +26,8 @@ export default function PatientPickerScreen() {
   const [query, setQuery] = useState('');
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const [sheetOpenKey, setSheetOpenKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -50,6 +53,21 @@ export default function PatientPickerScreen() {
     });
   };
 
+  const handleAddPatient = () => {
+    setSheetOpenKey((k) => k + 1);
+    setSheetVisible(true);
+  };
+
+  const handleSheetSuccess = async (patientId: string) => {
+    setSheetVisible(false);
+    // Paciente novo: busca a lista atualizada e já segue direto para a
+    // anamnese com ele selecionado, como no fluxo de "novo dependente".
+    const data = await searchPatients('');
+    setPatients(data);
+    const created = data.find((p) => p.id === patientId);
+    if (created) handleSelect(created);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -70,6 +88,15 @@ export default function PatientPickerScreen() {
         />
       </View>
 
+      <View style={styles.addPatientContainer}>
+        <TouchableOpacity style={styles.addCard} onPress={handleAddPatient} activeOpacity={0.8}>
+          <View style={styles.addIconContainer}>
+            <Plus color={colors.primary} size={20} />
+          </View>
+          <Text style={styles.addText}>Cadastrar novo paciente</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -77,7 +104,7 @@ export default function PatientPickerScreen() {
       ) : patients.length === 0 ? (
         <EmptyState
           title="Nenhum paciente encontrado"
-          subtitle="Tente buscar por outro nome ou verifique com a unidade de atendimento."
+          subtitle="Tente buscar por outro nome ou cadastre um paciente novo."
           icon={<User color={colors.primary} size={64} />}
         />
       ) : (
@@ -100,6 +127,13 @@ export default function PatientPickerScreen() {
           )}
         />
       )}
+
+      <AddPatientBottomSheet
+        visible={sheetVisible}
+        openKey={sheetOpenKey}
+        onClose={() => setSheetVisible(false)}
+        onSuccess={handleSheetSuccess}
+      />
     </SafeAreaView>
   );
 }
@@ -116,7 +150,28 @@ const styles = StyleSheet.create({
   },
   backButton: { padding: spacing.xs },
   headerTitle: { ...typography.h3 },
-  searchContainer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  searchContainer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
+  addPatientContainer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  addCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    padding: spacing.sm,
+  },
+  addIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  addText: { ...typography.bodyBold, color: colors.primary },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing.lg, paddingTop: 0 },
   patientCard: {
