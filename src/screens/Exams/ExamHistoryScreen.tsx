@@ -33,13 +33,22 @@ export default function ExamHistoryScreen() {
     }, []),
   );
 
-  // "Exames para avaliar" (só Profissional): exames concluídos que ainda não
-  // receberam o parecer do profissional (ver seção de avaliação no Report).
-  const toEvaluate = useMemo(
-    () => examHistory.filter((exam) => exam.status !== 'FAILED' && !exam.evaluation),
+  // O Profissional só recebe exames com resultado definitivo (Positivo ou
+  // Negativo) — inconclusivos e falhas na análise ficam só com o próprio
+  // paciente/usuário, que precisa refazer o teste, e nunca chegam ao médico.
+  const professionalExams = useMemo(
+    () => examHistory.filter((exam) => exam.status === 'POSITIVE' || exam.status === 'NEGATIVE'),
     [examHistory],
   );
-  const visibleExams = isProfessional && section === 'toEvaluate' ? toEvaluate : examHistory;
+  const baseExams = isProfessional ? professionalExams : examHistory;
+
+  // "Exames para avaliar" (só Profissional): dentro desse subconjunto, os que
+  // ainda não receberam o parecer do profissional (ver Report).
+  const toEvaluate = useMemo(
+    () => professionalExams.filter((exam) => !exam.evaluation),
+    [professionalExams],
+  );
+  const visibleExams = isProfessional && section === 'toEvaluate' ? toEvaluate : baseExams;
 
   const handleOpenExam = (examId: string) => {
     const screen = isProfessional && section === 'toEvaluate' ? 'Report' : 'Result';

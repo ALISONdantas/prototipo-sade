@@ -17,6 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppTabParamList, AppStackParamList } from '../../navigation/AppStack';
 import { useAuthStore } from '../../store/authStore';
 import { useExamStore } from '../../store/examStore';
+import { ExamResponse } from '../../services/examService';
 import { colors } from '../../theme';
 import { EmptyState, MetricCard } from '../../components';
 import { getAttendedUnits, AttendedUnit } from '../../services/professionalService';
@@ -24,57 +25,40 @@ import { getAttendedUnits, AttendedUnit } from '../../services/professionalServi
 type NavigationProp = BottomTabNavigationProp<AppTabParamList> &
   NativeStackNavigationProp<AppStackParamList>;
 
-type ExamResult = 'positive' | 'negative' | 'inconclusive';
-
-interface SharedExam {
-  id: string;
-  patientName: string;
-  date: string;
-  result: ExamResult;
-}
-
-const RESULT_LABEL: Record<ExamResult, string> = {
-  positive: 'Positivo',
-  negative: 'Negativo',
-  inconclusive: 'Inconclusivo',
+// O Profissional só recebe exames com resultado definitivo (Positivo ou
+// Negativo) — inconclusivos e falhas ficam só com o paciente/usuário, que
+// resolve refazendo o Teste de Adams (ver ResultScreen). Nunca chegam aqui.
+const STATUS_LABEL: Record<string, string> = {
+  POSITIVE: 'Positivo',
+  NEGATIVE: 'Negativo',
 };
 
-const RESULT_COLOR: Record<ExamResult, { text: string; bg: string }> = {
-  positive: { text: colors.positive, bg: colors.positiveLight },
-  negative: { text: colors.negative, bg: colors.negativeLight },
-  inconclusive: { text: colors.warning, bg: colors.warningLight },
+const STATUS_COLOR: Record<string, { text: string; bg: string }> = {
+  POSITIVE: { text: colors.positive, bg: colors.positiveLight },
+  NEGATIVE: { text: colors.negative, bg: colors.negativeLight },
 };
-
-// TODO: substituir por chamada real quando a API de compartilhamento de exames existir.
-// IDs alinhados com os mocks de `examService.getExamHistory` para que o toque no
-// card abra o laudo de verdade (ver seção "Parecer do profissional" no Report).
-const MOCK_SHARED_EXAMS: SharedExam[] = [
-  { id: 'mock-exam-1', patientName: 'Maria Silva', date: '2026-05-10', result: 'positive' },
-  { id: 'mock-exam-2', patientName: 'João Souza', date: '2026-04-15', result: 'negative' },
-  { id: 'mock-exam-3', patientName: 'Ana Pereira', date: '2026-03-28', result: 'inconclusive' },
-];
 
 function getInitials(name: string) {
   return name.substring(0, 2).toUpperCase();
 }
 
 function formatDate(isoDate: string) {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
+  return new Date(isoDate).toLocaleDateString('pt-BR');
 }
 
-function ExamResultBadge({ result }: { result: ExamResult }) {
-  const { text, bg } = RESULT_COLOR[result];
+function ExamResultBadge({ status }: { status: string }) {
+  const { text, bg } = STATUS_COLOR[status] ?? STATUS_COLOR.POSITIVE;
   return (
     <Box bg={bg} borderRadius="$full" px="$3" py="$1">
       <Text color={text} fontSize="$xs" fontWeight="$bold">
-        {RESULT_LABEL[result]}
+        {STATUS_LABEL[status] ?? status}
       </Text>
     </Box>
   );
 }
 
-function SharedExamCard({ exam, onPress }: { exam: SharedExam; onPress: () => void }) {
+function SharedExamCard({ exam, onPress }: { exam: ExamResponse; onPress: () => void }) {
+  const patientName = exam.dependent_name || 'Paciente';
   return (
     <Pressable onPress={onPress}>
       <Box borderWidth={1} borderColor={colors.border} borderRadius="$xl" p="$4" bg={colors.surface}>
@@ -82,19 +66,19 @@ function SharedExamCard({ exam, onPress }: { exam: SharedExam; onPress: () => vo
           <HStack space="md" alignItems="center" flex={1}>
             <Avatar bg={colors.primaryLight} size="md">
               <AvatarFallbackText color={colors.primary} fontWeight="$bold">
-                {getInitials(exam.patientName)}
+                {getInitials(patientName)}
               </AvatarFallbackText>
             </Avatar>
             <VStack flex={1}>
               <Text color={colors.textPrimary} fontWeight="$bold" numberOfLines={1}>
-                {exam.patientName}
+                {patientName}
               </Text>
               <Text color={colors.textSecondary} fontSize="$sm">
-                {formatDate(exam.date)}
+                {formatDate(exam.created_at)}
               </Text>
             </VStack>
           </HStack>
-          <ExamResultBadge result={exam.result} />
+          <ExamResultBadge status={exam.status} />
         </HStack>
       </Box>
     </Pressable>
@@ -103,18 +87,21 @@ function SharedExamCard({ exam, onPress }: { exam: SharedExam; onPress: () => vo
 
 export default function ProfessionalDashboard() {
   const { user, logout } = useAuthStore();
-  const { fetchExamHistory } = useExamStore();
+  const { examHistory, fetchExamHistory } = useExamStore();
   const navigation = useNavigation<NavigationProp>();
   const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'Profissional';
-  const sharedExams = MOCK_SHARED_EXAMS;
+  const sharedExams = examHistory.filter(
+    (exam) => (exam.status === 'POSITIVE' || exam.status === 'NEGATIVE') && !exam.evaluation,
+  );
 
   const [units, setUnits] = useState<AttendedUnit[]>([]);
 
-  // useFocusEffect (não useEffect) para refletir na hora unidades adicionadas
-  // ou removidas na aba "Unidades de Atendimento".
+  // useFocusEffect (não useEffect) para refletir na hora unidades e exames
+  // adicionados/avaliados nas outras abas.
   useFocusEffect(
     useCallback(() => {
       getAttendedUnits().then(setUnits);
+      fetchExamHistory();
     }, []),
   );
 
