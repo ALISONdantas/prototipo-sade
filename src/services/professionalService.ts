@@ -17,7 +17,7 @@ export interface UnitFilters {
 
 // TODO: substituir por chamada real quando o backend expuser o vínculo
 // profissional -> instituição (ver Plano de Implementação, risco R3).
-const UNITS_CATALOG: AttendedUnit[] = [
+export const UNITS_CATALOG: AttendedUnit[] = [
   {
     id: 'unit-1',
     name: 'Clínica São Lucas',

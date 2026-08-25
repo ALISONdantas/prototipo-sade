@@ -25,7 +25,6 @@ export interface ResearchStatsParams {
 export interface ResearchStatsData {
   totalExams: number;
   positiveRatePercentage: number;
-  regionsMonitored: number;
   populationDistribution: SeriesData;
   resultDistribution: ResultSlice[];
 }
@@ -41,7 +40,6 @@ export interface ResearchDatasetRow {
 interface ResearchStatsApiResponse {
   total_exams: number;
   positive_rate_percentage: number;
-  regions_monitored: number;
   population_distribution: SeriesData;
   result_distribution: ResultSlice[];
 }
@@ -49,9 +47,7 @@ interface ResearchStatsApiResponse {
 // TODO(#49): mock enquanto GET /api/v1/research/stats e GET /api/v1/research/export
 // não existem no backend. Ver docs/frontend-researcher-dashboard-charts-export-issue-49.md
 // para o contrato esperado das duas APIs reais.
-const MOCK_REGIONS_MONITORED = 8;
-
-const MOCK_STATS_BY_PERIOD: Record<ResearchPeriod, Omit<ResearchStatsData, 'regionsMonitored'>> = {
+const MOCK_STATS_BY_PERIOD: Record<ResearchPeriod, ResearchStatsData> = {
   week: {
     totalExams: 214,
     positiveRatePercentage: 18,
@@ -118,7 +114,6 @@ function buildMockStats(params: ResearchStatsParams): ResearchStatsData {
         ? Math.round(base.totalExams * 0.2)
         : base.totalExams,
     positiveRatePercentage: base.positiveRatePercentage,
-    regionsMonitored: MOCK_REGIONS_MONITORED,
     populationDistribution: scaleAgeDistribution(base.populationDistribution, params.ageRange),
     resultDistribution: isolateResult(base.resultDistribution, params.result),
   };
@@ -133,7 +128,6 @@ export const getResearchStats = async (params: ResearchStatsParams): Promise<Res
     return {
       totalExams: data.total_exams,
       positiveRatePercentage: data.positive_rate_percentage,
-      regionsMonitored: data.regions_monitored,
       populationDistribution: data.population_distribution,
       resultDistribution: data.result_distribution,
     };

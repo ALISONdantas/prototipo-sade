@@ -13,6 +13,7 @@ import InstitutionDashboard from '../screens/Dashboard/InstitutionDashboard';
 import ResearcherDashboard from '../screens/Dashboard/ResearcherDashboard';
 import DependentsListScreen from '../screens/Dependents/DependentsListScreen';
 import AttendedUnitsScreen from '../screens/Institutions/AttendedUnitsScreen';
+import MonitoredInstitutionsScreen from '../screens/Research/MonitoredInstitutionsScreen';
 import ExamHistoryScreen from '../screens/Exams/ExamHistoryScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
 import ChangePasswordScreen from '../screens/Auth/ChangePasswordScreen';
@@ -23,6 +24,7 @@ export type AppTabParamList = {
   HomeTab: undefined;
   DependentsTab: undefined;
   UnitsTab: undefined;
+  MonitoringTab: undefined;
   ExamsTab: undefined;
   ProfileTab: undefined;
 };
@@ -104,6 +106,17 @@ function MainTabs() {
           component={AttendedUnitsScreen}
           options={{
             tabBarLabel: 'Unidades',
+            tabBarIcon: ({ color, size }) => <Building2 color={color} size={size} />,
+          }}
+        />
+      )}
+
+      {isResearcher && (
+        <Tab.Screen
+          name="MonitoringTab"
+          component={MonitoredInstitutionsScreen}
+          options={{
+            tabBarLabel: 'Monitoramentos',
             tabBarIcon: ({ color, size }) => <Building2 color={color} size={size} />,
           }}
         />

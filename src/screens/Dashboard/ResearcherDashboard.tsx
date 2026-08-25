@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -24,16 +24,19 @@ import {
   LogOut,
   Activity,
   BarChart2,
-  Map,
+  Building2,
   Download,
   X,
   FileText,
   FileJson,
 } from 'lucide-react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useAuthStore } from '../../store/authStore';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { Button } from '../../components/Button';
 import { ErrorState } from '../../components';
+import { AppTabParamList } from '../../navigation/AppStack';
 import {
   getResearchStats,
   getResearchDataset,
@@ -43,10 +46,13 @@ import {
   type ResearchStatsData,
   type AgeRange,
 } from '../../services/researchDashboardService';
+import { getMonitoredInstitutions } from '../../services/researchInstitutionsService';
 import {
   exportResearchDataset,
   type DatasetExportFormat,
 } from '../../services/datasetExportService';
+
+type NavigationProp = BottomTabNavigationProp<AppTabParamList>;
 
 const PERIOD_OPTIONS: { key: ResearchPeriod; label: string }[] = [
   { key: 'week', label: 'Semana' },
@@ -143,6 +149,7 @@ function FilterPill({
 }
 
 export default function ResearcherDashboard() {
+  const navigation = useNavigation<NavigationProp>();
   const { user, logout } = useAuthStore();
   const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'Pesquisador';
   const { width: windowWidth } = useWindowDimensions();
@@ -155,6 +162,18 @@ export default function ResearcherDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
+
+  const [monitoredCount, setMonitoredCount] = useState<number | null>(null);
+
+  // Recarrega sempre que a tela volta ao foco (ex.: após adicionar/remover
+  // uma instituição na tela de Monitoramentos) para manter o número atual.
+  useFocusEffect(
+    useCallback(() => {
+      getMonitoredInstitutions()
+        .then((institutions) => setMonitoredCount(institutions.length))
+        .catch(() => setMonitoredCount(null));
+    }, []),
+  );
 
   const [showExportModal, setShowExportModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -293,27 +312,33 @@ export default function ResearcherDashboard() {
               </HStack>
             </Box>
 
-            <Box
-              borderWidth={1}
-              borderColor={colors.border}
-              borderRadius="$xl"
-              p="$4"
-              bg={colors.surface}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ver instituições monitoradas"
+              onPress={() => navigation.navigate('MonitoringTab')}
             >
-              <HStack space="md" alignItems="center">
-                <Box bg={colors.warningLight} p="$3" borderRadius="$lg">
-                  <Map size={24} color={colors.warning} />
-                </Box>
-                <VStack>
-                  <Text color={colors.textSecondary} fontSize="$sm">
-                    Regiões Monitoradas
-                  </Text>
-                  <Text color={colors.textPrimary} fontSize="$xl" fontWeight="$bold">
-                    {stats ? stats.regionsMonitored : '—'}
-                  </Text>
-                </VStack>
-              </HStack>
-            </Box>
+              <Box
+                borderWidth={1}
+                borderColor={colors.border}
+                borderRadius="$xl"
+                p="$4"
+                bg={colors.surface}
+              >
+                <HStack space="md" alignItems="center">
+                  <Box bg={colors.warningLight} p="$3" borderRadius="$lg">
+                    <Building2 size={24} color={colors.warning} />
+                  </Box>
+                  <VStack>
+                    <Text color={colors.textSecondary} fontSize="$sm">
+                      Instituições Monitoradas
+                    </Text>
+                    <Text color={colors.textPrimary} fontSize="$xl" fontWeight="$bold">
+                      {monitoredCount ?? '—'}
+                    </Text>
+                  </VStack>
+                </HStack>
+              </Box>
+            </Pressable>
           </VStack>
 
           {/* Filtro de período */}
