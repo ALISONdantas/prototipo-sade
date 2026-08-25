@@ -56,7 +56,11 @@ function PatientForm({ onClose, onSuccess }: PatientFormProps) {
     getAttendedUnits()
       .then((data) => {
         setUnits(data);
-        if (data.length === 1) setUnitId(data[0].id);
+        // Pré-seleciona a primeira unidade sempre que houver alguma — evita
+        // que o profissional fique com o botão "Salvar" travado sem entender
+        // por que, sem precisar escolher manualmente quando há só uma opção
+        // óbvia (ou nenhuma, caso em que a unidade fica opcional).
+        if (data.length > 0) setUnitId(data[0].id);
       })
       .finally(() => setLoadingUnits(false));
   }, []);
@@ -67,7 +71,11 @@ function PatientForm({ onClose, onSuccess }: PatientFormProps) {
   };
 
   const isValidBirthDate = birthDate.length === 10;
-  const isFormValid = name.trim().length > 0 && isValidBirthDate && sex !== '' && unitId !== '';
+  // Unidade só é obrigatória quando existe alguma opção para escolher — se o
+  // profissional ainda não atende nenhuma unidade, isso não pode bloquear o
+  // cadastro do paciente.
+  const isFormValid =
+    name.trim().length > 0 && isValidBirthDate && sex !== '' && (units.length === 0 || unitId !== '');
 
   const handleSave = async () => {
     if (!isFormValid || sex === '') return;
