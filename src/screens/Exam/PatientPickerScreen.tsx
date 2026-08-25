@@ -71,7 +71,19 @@ export default function PatientPickerScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            // Se a tela foi aberta direto (ex.: recarregando a página nesta
+            // rota), não há histórico local para voltar — nesse caso volta
+            // para o início em vez de deixar o botão sem efeito.
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('MainTabs' as never);
+            }
+          }}
+        >
           <ChevronLeft color={colors.textPrimary} size={28} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Selecionar Paciente</Text>
