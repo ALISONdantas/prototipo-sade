@@ -23,7 +23,9 @@ export default function ExamHistoryScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { examHistory, isLoadingHistory, fetchExamHistory, retryExam, error } = useExamStore();
   const { user } = useAuthStore();
-  const isProfessional = getLogicalRole(user) === 'PROFESSIONAL';
+  const logicalRole = getLogicalRole(user);
+  const isProfessional = logicalRole === 'PROFESSIONAL';
+  const isInstitution = logicalRole === 'INSTITUTION';
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [section, setSection] = useState<ExamsSection>('history');
 
@@ -42,15 +44,27 @@ export default function ExamHistoryScreen() {
   );
   const baseExams = isProfessional ? professionalExams : examHistory;
 
-  // "Exames para avaliar" (só Profissional): dentro desse subconjunto, os que
-  // ainda não receberam o parecer do profissional (ver Report).
+  // "Exames para avaliar" (Profissional) / "Exames em aberto" (Instituição):
+  // dentro do histórico, os que já têm resultado definitivo mas ainda não
+  // receberam o parecer do profissional (ver Report).
   const toEvaluate = useMemo(
     () => professionalExams.filter((exam) => !exam.evaluation),
     [professionalExams],
   );
-  const visibleExams = isProfessional && section === 'toEvaluate' ? toEvaluate : baseExams;
+  const openExams = useMemo(
+    () =>
+      examHistory.filter(
+        (exam) => (exam.status === 'POSITIVE' || exam.status === 'NEGATIVE') && !exam.evaluation,
+      ),
+    [examHistory],
+  );
+  const showTabs = isProfessional || isInstitution;
+  const secondTabExams = isProfessional ? toEvaluate : openExams;
+  const visibleExams = showTabs && section === 'toEvaluate' ? secondTabExams : baseExams;
 
   const handleOpenExam = (examId: string) => {
+    // Só o Profissional dá o parecer no laudo — a Instituição só acompanha o
+    // status, então sempre abre o resultado (mesmo na aba "Exames em aberto").
     const screen = isProfessional && section === 'toEvaluate' ? 'Report' : 'Result';
     navigation.navigate('ExamFlow', { screen, params: { examId } });
   };
@@ -71,7 +85,11 @@ export default function ExamHistoryScreen() {
     section === 'toEvaluate' ? (
       <EmptyState
         title="Nenhum exame pendente"
-        subtitle="Exames de pacientes prontos para o seu parecer aparecerão aqui."
+        subtitle={
+          isProfessional
+            ? 'Exames de pacientes prontos para o seu parecer aparecerão aqui.'
+            : 'Exames com resultado aguardando o parecer do profissional aparecerão aqui.'
+        }
         icon={<ClipboardCheck color={colors.primary} size={64} />}
       />
     ) : (
@@ -97,7 +115,7 @@ export default function ExamHistoryScreen() {
         <Text style={styles.headerTitle}>Histórico de Exames</Text>
       </View>
 
-      {isProfessional && (
+      {showTabs && (
         <View style={styles.tabsRow}>
           <Pressable
             style={[styles.tab, section === 'history' && styles.tabActive]}
@@ -112,7 +130,7 @@ export default function ExamHistoryScreen() {
             onPress={() => setSection('toEvaluate')}
           >
             <Text style={[styles.tabText, section === 'toEvaluate' && styles.tabTextActive]}>
-              Exames para avaliar
+              {isProfessional ? 'Exames para avaliar' : 'Exames em aberto'}
             </Text>
           </Pressable>
         </View>

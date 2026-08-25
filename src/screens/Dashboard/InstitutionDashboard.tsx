@@ -34,7 +34,6 @@ import {
   getInstitutionDashboard,
   type DashboardPeriod,
   type InstitutionDashboardData,
-  type InstitutionGroup,
 } from '../../services/institutionDashboardService';
 import { generateAndShareInstitutionDashboardReport } from '../../services/pdfService';
 
@@ -51,8 +50,6 @@ const PERIOD_OPTIONS: { key: Period; label: string }[] = [
   { key: 'month', label: 'Mês' },
   { key: 'year', label: 'Ano' },
 ];
-
-const ALL_GROUPS_KEY = 'all';
 
 const POSITIVE_RATE_COLOR: Record<string, string> = {
   Positivo: colors.positive,
@@ -199,23 +196,17 @@ export default function InstitutionDashboard() {
   const displayName = user?.full_name || 'Instituição';
   const initials = displayName.substring(0, 2).toUpperCase();
   const [period, setPeriod] = useState<Period>('week');
-  const [selectedGroupId, setSelectedGroupId] = useState<string>(ALL_GROUPS_KEY);
   const { width: windowWidth } = useWindowDimensions();
 
   const [selectedExams, setSelectedExams] = useState<string[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [destination, setDestination] = useState('Prontuário E-SUS');
 
-  const [groups, setGroups] = useState<InstitutionGroup[]>([]);
   const [dashboardData, setDashboardData] = useState<InstitutionDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const requestIdRef = useRef(0);
-
-  const groupId = selectedGroupId === ALL_GROUPS_KEY ? undefined : selectedGroupId;
-  const selectedGroupLabel =
-    groups.find((group) => group.id === selectedGroupId)?.name ?? 'Todos os setores';
 
   const fetchDashboard = () => {
     const requestId = ++requestIdRef.current;
@@ -224,12 +215,11 @@ export default function InstitutionDashboard() {
         if (requestId !== requestIdRef.current) return;
         setIsLoading(true);
         setError(null);
-        return getInstitutionDashboard({ period, groupId });
+        return getInstitutionDashboard({ period });
       })
       .then((data) => {
         if (!data || requestId !== requestIdRef.current) return;
         setDashboardData(data);
-        setGroups(data.groups);
       })
       .catch(() => {
         if (requestId !== requestIdRef.current) return;
@@ -241,13 +231,13 @@ export default function InstitutionDashboard() {
       });
   };
 
-  useEffect(fetchDashboard, [period, groupId]);
+  useEffect(fetchDashboard, [period]);
 
   const handleExport = async () => {
     if (!dashboardData || isExporting) return;
     setIsExporting(true);
     try {
-      await generateAndShareInstitutionDashboardReport(dashboardData, period, selectedGroupLabel);
+      await generateAndShareInstitutionDashboardReport(dashboardData, period);
     } catch (exportError) {
       console.error('Erro ao exportar relatório da instituição:', exportError);
     } finally {
@@ -340,27 +330,6 @@ export default function InstitutionDashboard() {
             />
           ))}
         </HStack>
-
-        {/* Filtro de setor */}
-        {groups.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} mb="$4">
-            <HStack space="sm">
-              <FilterPill
-                label="Todos os setores"
-                active={selectedGroupId === ALL_GROUPS_KEY}
-                onPress={() => setSelectedGroupId(ALL_GROUPS_KEY)}
-              />
-              {groups.map((group) => (
-                <FilterPill
-                  key={group.id}
-                  label={group.name}
-                  active={selectedGroupId === group.id}
-                  onPress={() => setSelectedGroupId(group.id)}
-                />
-              ))}
-            </HStack>
-          </ScrollView>
-        )}
 
         {error ? (
           <ErrorState message={error} onRetry={fetchDashboard} />

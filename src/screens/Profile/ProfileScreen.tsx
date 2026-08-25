@@ -9,6 +9,7 @@ import { colors, spacing, typography } from '../../theme';
 import { useAuthStore } from '../../store/authStore';
 import { AppStackParamList } from '../../navigation/AppStack';
 import { Input, Button } from '../../components';
+import { getLogicalRole } from '../../utils/role';
 
 type NavigationProp = NativeStackNavigationProp<AppStackParamList>;
 
@@ -16,6 +17,12 @@ function maskCpf(cpf?: string): string {
   const digits = (cpf || '').replace(/\D/g, '');
   if (digits.length !== 11) return 'Não informado';
   return `***.${digits.slice(3, 6)}.${digits.slice(6, 9)}-**`;
+}
+
+function formatCnpj(cnpj?: string): string {
+  const digits = (cnpj || '').replace(/\D/g, '');
+  if (digits.length !== 14) return 'Não informado';
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
 }
 
 function formatPhone(phone?: string): string {
@@ -32,11 +39,13 @@ function formatPhone(phone?: string): string {
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, logout, updateProfile } = useAuthStore();
+  const isInstitution = getLogicalRole(user) === 'INSTITUTION';
 
   const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'Usuário';
   const fullName = user?.full_name || 'Usuário Não Identificado';
   const email = user?.email || 'N/A';
   const cpf = maskCpf(user?.cpf);
+  const cnpj = formatCnpj(user?.cnpj);
   const phone = formatPhone(user?.phone);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -129,8 +138,8 @@ export default function ProfileScreen() {
                 <Text style={styles.infoValue}>{email}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>CPF</Text>
-                <Text style={styles.infoValue}>{cpf}</Text>
+                <Text style={styles.infoLabel}>{isInstitution ? 'CNPJ' : 'CPF'}</Text>
+                <Text style={styles.infoValue}>{isInstitution ? cnpj : cpf}</Text>
               </View>
 
               <View style={styles.editActionsRow}>
@@ -162,8 +171,8 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>CPF</Text>
-                <Text style={styles.infoValue}>{cpf}</Text>
+                <Text style={styles.infoLabel}>{isInstitution ? 'CNPJ' : 'CPF'}</Text>
+                <Text style={styles.infoValue}>{isInstitution ? cnpj : cpf}</Text>
               </View>
 
               <View style={styles.infoRow}>

@@ -94,7 +94,6 @@ function seriesRows(labels: string[], values: number[]): string {
 export const generateAndShareInstitutionDashboardReport = async (
   data: InstitutionDashboardData,
   period: DashboardPeriod,
-  groupLabel: string,
 ): Promise<void> => {
   const htmlContent = `
     <!DOCTYPE html>
@@ -119,7 +118,7 @@ export const generateAndShareInstitutionDashboardReport = async (
       <div class="header">
         <div class="logo">SADE</div>
         <div class="subtitle">Relatório Consolidado da Instituição</div>
-        <div class="subtitle">Período: ${PERIOD_LABEL[period]} · Setor: ${groupLabel}</div>
+        <div class="subtitle">Período: ${PERIOD_LABEL[period]}</div>
         <div class="subtitle">Gerado em: ${new Date().toLocaleString('pt-BR')}</div>
       </div>
 

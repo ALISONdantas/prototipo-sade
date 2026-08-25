@@ -8,6 +8,7 @@ export interface User {
   full_name?: string;
   role_code?: string;
   cpf?: string;
+  cnpj?: string;
   phone?: string;
   birth_date?: string;
   gender?: string;

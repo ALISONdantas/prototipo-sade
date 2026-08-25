@@ -62,7 +62,7 @@ const MOCK_ACCOUNTS: Record<string, MockAccount> = {
       last_name: 'Demo',
       full_name: 'Instituicao Demo',
       role_code: 'institution_manager',
-      cpf: '44455566619',
+      cnpj: '12345678000199',
       phone: '11988887777',
     },
   },

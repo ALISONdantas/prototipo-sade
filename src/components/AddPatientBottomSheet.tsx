@@ -16,6 +16,8 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { createPatient } from '../services/patientsService';
 import { getAttendedUnits, AttendedUnit } from '../services/professionalService';
+import { useAuthStore } from '../store/authStore';
+import { getLogicalRole } from '../utils/role';
 
 export interface AddPatientBottomSheetProps {
   visible: boolean;
@@ -44,15 +46,23 @@ interface PatientFormProps {
 }
 
 function PatientForm({ onClose, onSuccess }: PatientFormProps) {
+  const { user } = useAuthStore();
+  const isInstitution = getLogicalRole(user) === 'INSTITUTION';
+
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [sex, setSex] = useState<'M' | 'F' | 'O' | ''>('');
   const [units, setUnits] = useState<AttendedUnit[]>([]);
   const [unitId, setUnitId] = useState('');
-  const [loadingUnits, setLoadingUnits] = useState(true);
+  const [loadingUnits, setLoadingUnits] = useState(!isInstitution);
   const [saving, setSaving] = useState(false);
 
+  // Quando quem cadastra é a própria Instituição, a "unidade de atendimento"
+  // não faz sentido como escolha — o paciente pertence à própria instituição
+  // logada, então nem exibimos o seletor nem buscamos unidades atendidas
+  // (esse conceito é só do Profissional).
   useEffect(() => {
+    if (isInstitution) return;
     getAttendedUnits()
       .then((data) => {
         setUnits(data);
@@ -63,7 +73,7 @@ function PatientForm({ onClose, onSuccess }: PatientFormProps) {
         if (data.length > 0) setUnitId(data[0].id);
       })
       .finally(() => setLoadingUnits(false));
-  }, []);
+  }, [isInstitution]);
 
   const formatBirthDate = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 8);
@@ -73,9 +83,12 @@ function PatientForm({ onClose, onSuccess }: PatientFormProps) {
   const isValidBirthDate = birthDate.length === 10;
   // Unidade só é obrigatória quando existe alguma opção para escolher — se o
   // profissional ainda não atende nenhuma unidade, isso não pode bloquear o
-  // cadastro do paciente.
+  // cadastro do paciente. Para a Instituição, o campo nem existe.
   const isFormValid =
-    name.trim().length > 0 && isValidBirthDate && sex !== '' && (units.length === 0 || unitId !== '');
+    name.trim().length > 0 &&
+    isValidBirthDate &&
+    sex !== '' &&
+    (isInstitution || units.length === 0 || unitId !== '');
 
   const handleSave = async () => {
     if (!isFormValid || sex === '') return;
@@ -87,8 +100,8 @@ function PatientForm({ onClose, onSuccess }: PatientFormProps) {
         name: name.trim(),
         birthDate,
         sex,
-        unitId,
-        unitName: unit?.name ?? '',
+        unitId: isInstitution ? `institution-${user?.id ?? 'self'}` : unitId,
+        unitName: isInstitution ? user?.full_name || 'Instituição' : unit?.name ?? '',
       });
       onSuccess(patient.id);
     } catch (error) {
@@ -157,31 +170,33 @@ function PatientForm({ onClose, onSuccess }: PatientFormProps) {
             </View>
           </View>
 
-          <View style={styles.sectionGroup}>
-            <Text style={styles.sectionLabel}>Unidade de atendimento</Text>
-            {loadingUnits ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <View style={styles.optionsRow}>
-                {units.map((unit) => (
-                  <Pressable
-                    key={unit.id}
-                    style={[styles.option, unitId === unit.id && styles.optionSelected]}
-                    onPress={() => setUnitId(unit.id)}
-                  >
-                    {unitId === unit.id && (
-                      <View style={styles.checkIcon}>
-                        <Check size={16} color={colors.primaryDark} />
-                      </View>
-                    )}
-                    <Text style={[styles.optionText, unitId === unit.id && styles.optionTextSelected]}>
-                      {unit.name}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </View>
+          {!isInstitution && (
+            <View style={styles.sectionGroup}>
+              <Text style={styles.sectionLabel}>Unidade de atendimento</Text>
+              {loadingUnits ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <View style={styles.optionsRow}>
+                  {units.map((unit) => (
+                    <Pressable
+                      key={unit.id}
+                      style={[styles.option, unitId === unit.id && styles.optionSelected]}
+                      onPress={() => setUnitId(unit.id)}
+                    >
+                      {unitId === unit.id && (
+                        <View style={styles.checkIcon}>
+                          <Check size={16} color={colors.primaryDark} />
+                        </View>
+                      )}
+                      <Text style={[styles.optionText, unitId === unit.id && styles.optionTextSelected]}>
+                        {unit.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
 
           <Button
             title="Salvar paciente"
