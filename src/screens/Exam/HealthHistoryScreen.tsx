@@ -139,12 +139,10 @@ export default function HealthHistoryScreen() {
         <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
           <Animated.View style={{ transform: [{ translateX: shakeAnimation }] }}>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {dependentName ? `Sobre ${dependentName}` : 'Sobre você'}
-              </Text>
+              <Text style={styles.sectionTitle}>Sobre {dependentName}</Text>
               <Text style={styles.subtitleText}>
-                Este formulário é refeito a cada exame, já que peso, altura e outras respostas
-                podem mudar com o tempo — especialmente em crianças em crescimento.
+                Este formulário é refeito a cada exame, já que peso, altura e outras respostas podem
+                mudar com o tempo — especialmente em crianças em crescimento.
               </Text>
             </View>
 
