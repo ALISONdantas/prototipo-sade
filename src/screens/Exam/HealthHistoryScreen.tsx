@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { Input } from '../../components/Input';
 import { Toast } from '../../components/Toast';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useExamStore } from '../../store/examStore';
+import { getLastExamForDependent } from '../../services/examService';
 import { useConfirmExitOnBack } from '../../hooks/useConfirmExitOnBack';
 import { useToast } from '../../hooks/useToast';
 import { ExamStackParamList } from '../../navigation/ExamStack';
@@ -30,9 +31,12 @@ type NavigationProp = NativeStackNavigationProp<ExamStackParamList>;
 const SEX_LABEL: Record<string, string> = { M: 'Masculino', F: 'Feminino', O: 'Outro' };
 
 // RF04 — Formulário de Anamnese: idade, sexo, histórico familiar, doenças
-// pré-existentes, peso, altura, dor e cirurgias anteriores. Repetido em TODO
-// exame (não é reaproveitado do teste anterior), porque essas informações
-// mudam com o tempo — em especial peso e altura de crianças em crescimento.
+// pré-existentes, peso, altura, dor e cirurgias anteriores. Preenchido em TODO
+// exame, pois essas informações mudam com o tempo — em especial peso e
+// altura de crianças em crescimento. Para agilizar o fluxo, quando o
+// dependente já tem exame anterior, o formulário vem pré-preenchido com os
+// dados do exame mais recente dele, mas continua editável e precisa ser
+// revisado/confirmado a cada exame.
 export default function HealthHistoryScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<HealthHistoryRouteProp>();
@@ -48,10 +52,34 @@ export default function HealthHistoryScreen() {
   const [hasPain, setHasPain] = useState<boolean | null>(null);
   const [hadSurgery, setHadSurgery] = useState<boolean | null>(null);
   const [surgeryDetail, setSurgeryDetail] = useState('');
+  const [lastExamDate, setLastExamDate] = useState<string | null>(null);
 
   const { createExam, isSubmitting: loading } = useExamStore();
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(true);
   const { toast, showToast } = useToast();
+
+  useEffect(() => {
+    if (!dependentId) return;
+    let cancelled = false;
+
+    (async () => {
+      const lastExam = await getLastExamForDependent(dependentId);
+      if (cancelled || !lastExam) return;
+
+      if (lastExam.weight_kg != null) setWeight(String(lastExam.weight_kg));
+      if (lastExam.height_cm != null) setHeight(String(lastExam.height_cm));
+      setFamilyHistory(lastExam.family_history);
+      setPreExistingConditions(lastExam.pre_existing_conditions || '');
+      setHasPain(lastExam.has_pain);
+      setHadSurgery(lastExam.had_surgery);
+      setSurgeryDetail(lastExam.surgery_detail || '');
+      setLastExamDate(new Date(lastExam.created_at).toLocaleDateString('pt-BR'));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dependentId]);
 
   const shakeAnimation = useRef(new Animated.Value(0)).current;
 
@@ -144,6 +172,14 @@ export default function HealthHistoryScreen() {
                 Este formulário é refeito a cada exame, já que peso, altura e outras respostas podem
                 mudar com o tempo — especialmente em crianças em crescimento.
               </Text>
+              {lastExamDate && (
+                <View style={styles.prefillBanner}>
+                  <Text style={styles.prefillText}>
+                    Preenchemos com os dados do último exame ({lastExamDate}). Revise antes de
+                    continuar.
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.section}>
@@ -275,6 +311,13 @@ const styles = StyleSheet.create({
   section: { marginBottom: spacing.xl, gap: spacing.md },
   sectionTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.xs },
   subtitleText: { ...typography.small, color: colors.textSecondary },
+  prefillBanner: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 10,
+    padding: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  prefillText: { ...typography.small, color: colors.primaryDark },
   readOnlyRow: { flexDirection: 'row', gap: spacing.md },
   readOnlyField: {
     flex: 1,

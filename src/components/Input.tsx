@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   StyleSheet,
@@ -41,6 +41,13 @@ export function Input({
       useNativeDriver: false,
     }).start();
   };
+
+  // O label só reagia a focus/blur; quando `value` é setado programaticamente
+  // (ex: pré-preenchimento do último exame), o label ficava sobreposto ao
+  // texto por nunca ter sido "flutuado".
+  useEffect(() => {
+    animateLabel(isFloating ? 1 : 0);
+  }, [value]);
 
   const handleFocus = (e: any) => {
     setIsFocused(true);

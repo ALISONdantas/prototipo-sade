@@ -86,7 +86,12 @@ export const createExamDraft = async (payload: CreateExamDraftPayload): Promise<
     // Backend não modela exame de Profissional sobre Paciente ainda — mock direto.
     console.warn('Mocking createExamDraft para exame de Profissional (patient_id)');
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return buildDraftResponse(payload, { id: 'mock-exam-patient-' + Date.now(), id_patient: payload.patient_id });
+    const draft = buildDraftResponse(payload, {
+      id: 'mock-exam-patient-' + Date.now(),
+      id_patient: payload.patient_id,
+    });
+    mockExamHistory.push(draft);
+    return draft;
   }
 
   try {
@@ -100,13 +105,19 @@ export const createExamDraft = async (payload: CreateExamDraftPayload): Promise<
       sex: SEX_TO_GENDER[payload.sex] || payload.sex,
     });
     const draft = response.data;
-    return buildDraftResponse(payload, { id: draft.id_draft, id_patient: draft.id_user, id_dependent: draft.id_dependent || payload.dependent_id });
+    return buildDraftResponse(payload, {
+      id: draft.id_draft,
+      id_patient: draft.id_user,
+      id_dependent: draft.id_dependent || payload.dependent_id,
+    });
   } catch (error: any) {
     // Protótipo: qualquer falha do backend cai no mock, para nunca travar a
     // navegação entre telas.
     console.warn('Mocking createExamDraft (Backend indisponível ou com erro)', error?.message);
     await new Promise((resolve) => setTimeout(resolve, 800));
-    return buildDraftResponse(payload, {});
+    const draft = buildDraftResponse(payload, {});
+    mockExamHistory.push(draft);
+    return draft;
   }
 };
 
@@ -131,64 +142,85 @@ export const uploadExamImage = async (examId: string, imageUri: string): Promise
   }
 };
 
+// Mock Storage para o Frontend enquanto o histórico de exames por dependente
+// não tem contrato real no backend — os rascunhos criados via mock (ver
+// createExamDraft) são acrescentados aqui, para que a pré-preenchimento da
+// anamnese (RF04) com o último exame do dependente funcione de ponta a ponta
+// no protótipo.
+let mockExamHistory: ExamResponse[] = [
+  {
+    id: 'mock-exam-1',
+    id_patient: 'mock-patient-id',
+    status: 'POSITIVE',
+    age: 12,
+    sex: 'F',
+    family_history: false,
+    has_pain: true,
+    had_surgery: false,
+    created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+  {
+    id: 'mock-exam-2',
+    id_patient: 'mock-patient-id',
+    id_dependent: 'mock-dep-1',
+    dependent_name: 'João Souza',
+    status: 'NEGATIVE',
+    age: 9,
+    sex: 'M',
+    weight_kg: 32.4,
+    height_cm: 134,
+    family_history: false,
+    pre_existing_conditions: 'Asma',
+    has_pain: false,
+    had_surgery: false,
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
+  {
+    id: 'mock-exam-3',
+    id_patient: 'mock-patient-id',
+    status: 'INCONCLUSIVE',
+    age: 12,
+    sex: 'F',
+    family_history: false,
+    has_pain: false,
+    had_surgery: false,
+    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+  },
+  {
+    id: 'mock-exam-4',
+    id_patient: 'mock-patient-id',
+    status: 'FAILED',
+    age: 12,
+    sex: 'F',
+    family_history: false,
+    has_pain: false,
+    had_surgery: false,
+    created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
+  },
+];
+
 export const getExamHistory = async (): Promise<ExamResponse[]> => {
   try {
     const response = await api.get<ExamResponse[]>('/exams');
     return response.data;
   } catch (error: any) {
-    {
-      console.warn('Mocking getExamHistory (Backend indisponível ou com erro)', error?.message);
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      return [
-        {
-          id: 'mock-exam-1',
-          id_patient: 'mock-patient-id',
-          status: 'POSITIVE',
-          age: 12,
-          sex: 'F',
-          family_history: false,
-          has_pain: true,
-          had_surgery: false,
-          created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
-        },
-        {
-          id: 'mock-exam-2',
-          id_patient: 'mock-patient-id',
-          id_dependent: 'mock-dep-1',
-          dependent_name: 'João Souza',
-          status: 'NEGATIVE',
-          age: 9,
-          sex: 'M',
-          family_history: false,
-          has_pain: false,
-          had_surgery: false,
-          created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
-        },
-        {
-          id: 'mock-exam-3',
-          id_patient: 'mock-patient-id',
-          status: 'INCONCLUSIVE',
-          age: 12,
-          sex: 'F',
-          family_history: false,
-          has_pain: false,
-          had_surgery: false,
-          created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-        },
-        {
-          id: 'mock-exam-4',
-          id_patient: 'mock-patient-id',
-          status: 'FAILED',
-          age: 12,
-          sex: 'F',
-          family_history: false,
-          has_pain: false,
-          had_surgery: false,
-          created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
-        },
-      ];
-    }
+    console.warn('Mocking getExamHistory (Backend indisponível ou com erro)', error?.message);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    return [...mockExamHistory];
   }
+};
+
+// RF04 — ao abrir a anamnese de um dependente que já tem exame anterior,
+// pré-preenche o formulário com os dados do exame mais recente dele, para
+// agilizar o fluxo quando os dados continuam os mesmos.
+export const getLastExamForDependent = async (
+  dependentId: string,
+): Promise<ExamResponse | null> => {
+  const history = await getExamHistory();
+  const dependentExams = history
+    .filter((exam) => exam.id_dependent === dependentId)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return dependentExams[0] ?? null;
 };
 
 export const retryExam = async (examId: string): Promise<{ status: string }> => {

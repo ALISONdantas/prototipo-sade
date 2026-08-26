@@ -63,8 +63,21 @@ function mapDependent(item: DependentApiResponse): Dependent {
   };
 }
 
-// Mock Storage para o Frontend enquanto a API do Backend (Issue #231) não está pronta
-export let mockDependents: Dependent[] = [];
+// Mock Storage para o Frontend enquanto a API do Backend (Issue #231) não está pronta.
+// Já vem com um dependente pré-cadastrado (mock-dep-1, mesmo id usado no
+// histórico de exames mockado em examService.ts) para demonstrar, sem passos
+// extras, o pré-preenchimento da anamnese com o último exame do dependente.
+export let mockDependents: Dependent[] = [
+  {
+    id: 'mock-dep-1',
+    name: 'João Souza',
+    age: 9,
+    sex: 'M',
+    birthDate: '15/03/2017',
+    relationship: 'Filho',
+    genderLabel: 'Masculino',
+  },
+];
 
 export const mockCreateDependent = async (data: {
   name: string;
