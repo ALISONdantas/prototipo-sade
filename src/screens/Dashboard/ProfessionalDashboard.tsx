@@ -10,7 +10,15 @@ import {
   Pressable,
   Icon,
 } from '@gluestack-ui/themed';
-import { LogOut, FileText, Stethoscope, Building2, AlertTriangle, ChevronRight } from 'lucide-react-native';
+import {
+  LogOut,
+  FileText,
+  Stethoscope,
+  Building2,
+  AlertTriangle,
+  ChevronRight,
+  Percent,
+} from 'lucide-react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,6 +29,7 @@ import { ExamResponse } from '../../services/examService';
 import { colors } from '../../theme';
 import { EmptyState, MetricCard } from '../../components';
 import { getAttendedUnits, AttendedUnit } from '../../services/professionalService';
+import { getProfessionalAlerts } from '../../services/alertsService';
 
 type NavigationProp = BottomTabNavigationProp<AppTabParamList> &
   NativeStackNavigationProp<AppStackParamList>;
@@ -61,7 +70,13 @@ function SharedExamCard({ exam, onPress }: { exam: ExamResponse; onPress: () => 
   const patientName = exam.dependent_name || 'Paciente';
   return (
     <Pressable onPress={onPress}>
-      <Box borderWidth={1} borderColor={colors.border} borderRadius="$xl" p="$4" bg={colors.surface}>
+      <Box
+        borderWidth={1}
+        borderColor={colors.border}
+        borderRadius="$xl"
+        p="$4"
+        bg={colors.surface}
+      >
         <HStack justifyContent="space-between" alignItems="center">
           <HStack space="md" alignItems="center" flex={1}>
             <Avatar bg={colors.primaryLight} size="md">
@@ -93,15 +108,30 @@ export default function ProfessionalDashboard() {
   const sharedExams = examHistory.filter(
     (exam) => (exam.status === 'POSITIVE' || exam.status === 'NEGATIVE') && !exam.evaluation,
   );
+  const definitiveExams = examHistory.filter(
+    (exam) => exam.status === 'POSITIVE' || exam.status === 'NEGATIVE',
+  );
+  const positiveRate =
+    definitiveExams.length > 0
+      ? Math.round(
+          (definitiveExams.filter((exam) => exam.status === 'POSITIVE').length /
+            definitiveExams.length) *
+            100,
+        )
+      : 0;
 
   const [units, setUnits] = useState<AttendedUnit[]>([]);
+  const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
 
-  // useFocusEffect (não useEffect) para refletir na hora unidades e exames
-  // adicionados/avaliados nas outras abas.
+  // useFocusEffect (não useEffect) para refletir na hora unidades, exames e
+  // alertas adicionados/avaliados/resolvidos nas outras abas.
   useFocusEffect(
     useCallback(() => {
       getAttendedUnits().then(setUnits);
       fetchExamHistory();
+      getProfessionalAlerts().then((alerts) =>
+        setPendingAlertsCount(alerts.filter((alert) => !alert.resolved).length),
+      );
     }, []),
   );
 
@@ -157,7 +187,7 @@ export default function ProfessionalDashboard() {
 
         {/* Métricas rápidas */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} mb="$8">
-          <HStack space="md">
+          <HStack space="sm">
             <MetricCard
               label="Unidades atendidas"
               value={units.length}
@@ -166,12 +196,13 @@ export default function ProfessionalDashboard() {
             />
             <MetricCard
               label="Alertas"
-              value="!"
+              value={pendingAlertsCount}
               icon={AlertTriangle}
               accentColor={colors.warning}
               accentBg={colors.warningLight}
               onPress={() => navigation.navigate('Alerts')}
             />
+            <MetricCard label="Taxa de Positividade" value={`${positiveRate}%`} icon={Percent} />
           </HStack>
         </ScrollView>
 

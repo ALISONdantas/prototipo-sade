@@ -23,17 +23,17 @@ export function MetricCard({
       borderWidth={1}
       borderColor={colors.border}
       borderRadius="$xl"
-      p="$4"
+      p="$3"
       bg={colors.surface}
-      minWidth={160}
+      minWidth={110}
     >
-      <Box bg={accentBg} p="$3" borderRadius="$lg" alignSelf="flex-start" mb="$3">
-        <MetricIcon size={20} color={accentColor} />
+      <Box bg={accentBg} p="$2" borderRadius="$lg" alignSelf="flex-start" mb="$2">
+        <MetricIcon size={16} color={accentColor} />
       </Box>
-      <Text color={colors.textPrimary} fontSize="$2xl" fontWeight="$bold">
+      <Text color={colors.textPrimary} fontSize="$lg" fontWeight="$bold">
         {value}
       </Text>
-      <Text color={colors.textSecondary} fontSize="$sm">
+      <Text color={colors.textSecondary} fontSize="$xs">
         {label}
       </Text>
     </Box>
