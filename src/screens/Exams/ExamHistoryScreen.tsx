@@ -35,21 +35,22 @@ export default function ExamHistoryScreen() {
     }, []),
   );
 
-  // O Profissional só recebe exames com resultado definitivo (Positivo ou
-  // Negativo) — inconclusivos e falhas na análise ficam só com o próprio
-  // paciente/usuário, que precisa refazer o teste, e nunca chegam ao médico.
-  const professionalExams = useMemo(
+  // Tanto o Profissional quanto o Usuário/Paciente só veem exames com
+  // resultado definitivo (Positivo ou Negativo) nessa tela — inconclusivos e
+  // falhas na análise não aparecem no histórico. A Instituição continua
+  // acompanhando todos os status.
+  const definitiveExams = useMemo(
     () => examHistory.filter((exam) => exam.status === 'POSITIVE' || exam.status === 'NEGATIVE'),
     [examHistory],
   );
-  const baseExams = isProfessional ? professionalExams : examHistory;
+  const baseExams = isInstitution ? examHistory : definitiveExams;
 
   // "Exames para avaliar" (Profissional) / "Exames em aberto" (Instituição):
   // dentro do histórico, os que já têm resultado definitivo mas ainda não
   // receberam o parecer do profissional (ver Report).
   const toEvaluate = useMemo(
-    () => professionalExams.filter((exam) => !exam.evaluation),
-    [professionalExams],
+    () => definitiveExams.filter((exam) => !exam.evaluation),
+    [definitiveExams],
   );
   const openExams = useMemo(
     () =>
