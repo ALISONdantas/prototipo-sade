@@ -20,7 +20,7 @@ import { Input } from '../../components/Input';
 import { Toast } from '../../components/Toast';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useExamStore } from '../../store/examStore';
-import { getLastExamForDependent } from '../../services/examService';
+import { getLastExamForDependent, getLastExamForPatient } from '../../services/examService';
 import { useConfirmExitOnBack } from '../../hooks/useConfirmExitOnBack';
 import { useToast } from '../../hooks/useToast';
 import { ExamStackParamList } from '../../navigation/ExamStack';
@@ -34,9 +34,9 @@ const SEX_LABEL: Record<string, string> = { M: 'Masculino', F: 'Feminino', O: 'O
 // pré-existentes, peso, altura, dor e cirurgias anteriores. Preenchido em TODO
 // exame, pois essas informações mudam com o tempo — em especial peso e
 // altura de crianças em crescimento. Para agilizar o fluxo, quando o
-// dependente já tem exame anterior, o formulário vem pré-preenchido com os
-// dados do exame mais recente dele, mas continua editável e precisa ser
-// revisado/confirmado a cada exame.
+// dependente/paciente já tem exame anterior, o formulário vem pré-preenchido
+// com os dados do exame mais recente dele, mas continua editável e precisa
+// ser revisado/confirmado a cada exame.
 export default function HealthHistoryScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<HealthHistoryRouteProp>();
@@ -59,11 +59,13 @@ export default function HealthHistoryScreen() {
   const { toast, showToast } = useToast();
 
   useEffect(() => {
-    if (!dependentId) return;
+    if (!dependentId && !patientId) return;
     let cancelled = false;
 
     (async () => {
-      const lastExam = await getLastExamForDependent(dependentId);
+      const lastExam = dependentId
+        ? await getLastExamForDependent(dependentId)
+        : await getLastExamForPatient(patientId as string);
       if (cancelled || !lastExam) return;
 
       if (lastExam.weight_kg != null) setWeight(String(lastExam.weight_kg));
@@ -79,7 +81,7 @@ export default function HealthHistoryScreen() {
     return () => {
       cancelled = true;
     };
-  }, [dependentId]);
+  }, [dependentId, patientId]);
 
   const shakeAnimation = useRef(new Animated.Value(0)).current;
 
@@ -119,7 +121,13 @@ export default function HealthHistoryScreen() {
       await createExam(payload);
 
       setHasUnsavedChanges(false);
-      navigation.navigate('AdamsTutorial');
+      // Exame feito por Profissional/Instituição em um paciente (patientId)
+      // exige os dados do responsável legal antes do Teste de Adams.
+      if (patientId) {
+        navigation.navigate('GuardianInfo', { patientName: dependentName });
+      } else {
+        navigation.navigate('AdamsTutorial');
+      }
     } catch (error) {
       showToast('Não foi possível salvar o rascunho do exame. Tente novamente.', 'error');
     }

@@ -14,6 +14,9 @@ import { FileText, ImageIcon, CheckCircle2, AlertTriangle, Stethoscope } from 'l
 
 import { colors, spacing, typography, radius, shadows } from '../../theme';
 import { Button } from '../../components/Button';
+import { RequestRetakeModal } from '../../components/RequestRetakeModal';
+import { Toast } from '../../components/Toast';
+import { useToast } from '../../hooks/useToast';
 import { ExamStackParamList } from '../../navigation/ExamStack';
 import { useExamStore } from '../../store/examStore';
 import { useAuthStore } from '../../store/authStore';
@@ -29,18 +32,28 @@ export default function ReportScreen() {
   const route = useRoute<ReportScreenRouteProp>();
   const { examId } = route.params;
 
-  const { currentExam, examHistory, isLoadingHistory, fetchExamHistory, clearCurrentExam, evaluateExam, isSubmitting } =
-    useExamStore();
+  const {
+    currentExam,
+    examHistory,
+    isLoadingHistory,
+    fetchExamHistory,
+    clearCurrentExam,
+    evaluateExam,
+    requestRetake,
+    isSubmitting,
+  } = useExamStore();
   const { user } = useAuthStore();
   const isProfessional = getLogicalRole(user) === 'PROFESSIONAL';
+  const { toast, showToast } = useToast();
 
   const exam = useMemo(
     () => (currentExam?.id === examId ? currentExam : examHistory.find((e) => e.id === examId)),
-    [examId, currentExam, examHistory]
+    [examId, currentExam, examHistory],
   );
 
   const [opinion, setOpinion] = useState('');
   const [agreesWithAi, setAgreesWithAi] = useState<boolean | null>(null);
+  const [retakeModalVisible, setRetakeModalVisible] = useState(false);
 
   // Ao chegar aqui direto (ex.: a partir de "Resolver" na tela de Alertas),
   // o histórico de exames pode ainda não ter sido carregado — busca sob
@@ -88,10 +101,23 @@ export default function ReportScreen() {
     }
   };
 
+  const handleConfirmRetake = async (reason: string) => {
+    try {
+      await requestRetake(examId, reason);
+      // Repetição solicitada conta como o profissional ter tratado o alerta,
+      // mesmo sem emitir um parecer sobre o resultado atual.
+      resolveProfessionalAlertByExam(examId).catch(() => {});
+      setRetakeModalVisible(false);
+      showToast('Repetição solicitada. O paciente verá o pedido no histórico dele.');
+    } catch (error) {
+      console.error('Erro ao solicitar repetição do exame:', error);
+      showToast('Não foi possível registrar o pedido. Tente novamente.', 'error');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
         {/* Document Card */}
         <View style={styles.card}>
           {/* Header do Documento */}
@@ -104,7 +130,7 @@ export default function ReportScreen() {
               Data do Exame: {new Date(exam.created_at).toLocaleDateString('pt-BR')}
             </Text>
           </View>
-          
+
           <View style={styles.divider} />
 
           {/* Imagem Placeholder */}
@@ -116,7 +142,7 @@ export default function ReportScreen() {
           {/* Anamnese */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Dados da Anamnese</Text>
-            
+
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Idade:</Text>
               <Text style={styles.infoValue}>{exam.age} anos</Text>
@@ -166,13 +192,17 @@ export default function ReportScreen() {
           {/* Resultado */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Conclusão da Inteligência Artificial</Text>
-            <View style={[styles.resultBadge, isPositive ? styles.badgePositive : styles.badgeNegative]}>
+            <View
+              style={[styles.resultBadge, isPositive ? styles.badgePositive : styles.badgeNegative]}
+            >
               {isPositive ? (
                 <AlertTriangle size={20} color={colors.positive} />
               ) : (
                 <CheckCircle2 size={20} color={colors.negative} />
               )}
-              <Text style={[styles.resultText, isPositive ? styles.textPositive : styles.textNegative]}>
+              <Text
+                style={[styles.resultText, isPositive ? styles.textPositive : styles.textNegative]}
+              >
                 {isPositive ? 'Indícios Detectados' : 'Nenhum Indício Detectado'}
               </Text>
             </View>
@@ -181,7 +211,9 @@ export default function ReportScreen() {
           {/* Disclaimer */}
           <View style={styles.disclaimerBox}>
             <Text style={styles.disclaimerText}>
-              Este documento apresenta o resultado de uma triagem digital. Ele NÃO possui validade de diagnóstico médico. Em caso de dúvidas ou persistência de dores, consulte um ortopedista ou especialista especializado.
+              Este documento apresenta o resultado de uma triagem digital. Ele NÃO possui validade
+              de diagnóstico médico. Em caso de dúvidas ou persistência de dores, consulte um
+              ortopedista ou especialista especializado.
             </Text>
           </View>
 
@@ -193,7 +225,12 @@ export default function ReportScreen() {
                 <Text style={styles.sectionTitle}>Parecer do Profissional</Text>
               </View>
 
-              {exam.evaluation ? (
+              {exam.retake ? (
+                <View style={styles.retakeDoneBox}>
+                  <Text style={styles.retakeDoneLabel}>Repetição do exame solicitada</Text>
+                  <Text style={styles.retakeDoneText}>{exam.retake.reason}</Text>
+                </View>
+              ) : exam.evaluation ? (
                 <View style={styles.evaluationDoneBox}>
                   <Text style={styles.evaluationDoneLabel}>
                     {exam.evaluation.agreesWithAi
@@ -257,6 +294,14 @@ export default function ReportScreen() {
                     disabled={agreesWithAi === null || isSubmitting}
                     style={styles.evaluationSubmitButton}
                   />
+
+                  <Button
+                    title="Refazer Exame"
+                    variant="danger"
+                    onPress={() => setRetakeModalVisible(true)}
+                    disabled={isSubmitting}
+                    style={styles.retakeButton}
+                  />
                 </>
               )}
             </View>
@@ -274,6 +319,15 @@ export default function ReportScreen() {
           <Button title="Voltar ao Início" onPress={handleFinish} variant="ghost" />
         </View>
       </ScrollView>
+
+      {toast && <Toast message={toast.message} variant={toast.variant} />}
+
+      <RequestRetakeModal
+        visible={retakeModalVisible}
+        onClose={() => setRetakeModalVisible(false)}
+        onConfirm={handleConfirmRetake}
+        loading={isSubmitting}
+      />
     </View>
   );
 }
@@ -282,6 +336,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    position: 'relative',
   },
   centered: {
     justifyContent: 'center',
@@ -459,6 +514,9 @@ const styles = StyleSheet.create({
   evaluationSubmitButton: {
     marginTop: spacing.xs,
   },
+  retakeButton: {
+    marginTop: spacing.sm,
+  },
   evaluationDoneBox: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.md,
@@ -470,6 +528,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   evaluationDoneText: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  retakeDoneBox: {
+    backgroundColor: colors.positiveLight,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  retakeDoneLabel: {
+    ...typography.bodyBold,
+    color: colors.positive,
+    marginBottom: spacing.xs,
+  },
+  retakeDoneText: {
     ...typography.small,
     color: colors.textSecondary,
   },

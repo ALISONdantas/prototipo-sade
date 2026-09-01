@@ -1,5 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  FlatList,
+  ActivityIndicator,
+  Pressable,
+} from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -47,15 +55,19 @@ export default function ExamHistoryScreen() {
 
   // "Exames para avaliar" (Profissional) / "Exames em aberto" (Instituição):
   // dentro do histórico, os que já têm resultado definitivo mas ainda não
-  // receberam o parecer do profissional (ver Report).
+  // receberam o parecer do profissional (ver Report). Exames com repetição
+  // já pedida saem da fila — o profissional já tratou esse caso.
   const toEvaluate = useMemo(
-    () => definitiveExams.filter((exam) => !exam.evaluation),
+    () => definitiveExams.filter((exam) => !exam.evaluation && !exam.retake),
     [definitiveExams],
   );
   const openExams = useMemo(
     () =>
       examHistory.filter(
-        (exam) => (exam.status === 'POSITIVE' || exam.status === 'NEGATIVE') && !exam.evaluation,
+        (exam) =>
+          (exam.status === 'POSITIVE' || exam.status === 'NEGATIVE') &&
+          !exam.evaluation &&
+          !exam.retake,
       ),
     [examHistory],
   );
@@ -68,6 +80,10 @@ export default function ExamHistoryScreen() {
     // status, então sempre abre o resultado (mesmo na aba "Exames em aberto").
     const screen = isProfessional && section === 'toEvaluate' ? 'Report' : 'Result';
     navigation.navigate('ExamFlow', { screen, params: { examId } });
+  };
+
+  const handleRetakeExam = () => {
+    navigation.navigate('ExamFlow', { screen: 'SelectTestee' });
   };
 
   const handleRetry = async (examId: string) => {
@@ -156,9 +172,11 @@ export default function ExamHistoryScreen() {
                 status={item.status}
                 createdAt={item.created_at}
                 dependentName={item.dependent_name}
+                retakeRequested={!!item.retake}
                 retrying={retryingId === item.id}
                 onPress={item.status === 'FAILED' ? undefined : () => handleOpenExam(item.id)}
                 onRetry={item.status === 'FAILED' ? () => handleRetry(item.id) : undefined}
+                onRetakeExam={item.retake ? handleRetakeExam : undefined}
               />
             )}
           />

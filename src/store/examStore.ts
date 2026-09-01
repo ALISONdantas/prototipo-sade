@@ -5,7 +5,10 @@ import {
   retryExam as retryExamRequest,
   getExamHistory,
   evaluateExam as evaluateExamRequest,
+  requestExamRetake as requestExamRetakeRequest,
+  updateExamGuardian as updateExamGuardianRequest,
   CreateExamDraftPayload,
+  ExamGuardianPayload,
   ExamResponse,
 } from '../services/examService';
 
@@ -23,6 +26,8 @@ interface ExamActions {
   fetchExamHistory: () => Promise<void>;
   retryExam: (examId: string) => Promise<void>;
   evaluateExam: (examId: string, opinion: string, agreesWithAi: boolean) => Promise<void>;
+  requestRetake: (examId: string, reason: string) => Promise<void>;
+  updateGuardianInfo: (guardian: ExamGuardianPayload) => Promise<void>;
   clearCurrentExam: () => void;
 }
 
@@ -122,6 +127,55 @@ export const useExamStore = create<ExamState & ExamActions>((set, get) => ({
     } catch (error: any) {
       set({
         error: error.message || 'Erro ao enviar o parecer do profissional',
+        isSubmitting: false,
+      });
+      throw error;
+    }
+  },
+
+  requestRetake: async (examId: string, reason: string) => {
+    set({ isSubmitting: true, error: null });
+    try {
+      const retake = await requestExamRetakeRequest(examId, reason);
+      set((state) => ({
+        currentExam:
+          state.currentExam?.id === examId ? { ...state.currentExam, retake } : state.currentExam,
+        examHistory: state.examHistory.map((exam) =>
+          exam.id === examId ? { ...exam, retake } : exam,
+        ),
+        isSubmitting: false,
+      }));
+    } catch (error: any) {
+      set({
+        error: error.message || 'Erro ao solicitar a repetição do exame',
+        isSubmitting: false,
+      });
+      throw error;
+    }
+  },
+
+  updateGuardianInfo: async (guardian: ExamGuardianPayload) => {
+    const { currentExam } = get();
+    if (!currentExam) return;
+
+    set({ isSubmitting: true, error: null });
+    try {
+      await updateExamGuardianRequest(currentExam.id, guardian);
+      set((state) => ({
+        currentExam: state.currentExam
+          ? {
+              ...state.currentExam,
+              guardian_name: guardian.name,
+              guardian_cpf: guardian.cpf,
+              guardian_birth_date: guardian.birthDate,
+              guardian_relationship: guardian.relationship,
+            }
+          : null,
+        isSubmitting: false,
+      }));
+    } catch (error: any) {
+      set({
+        error: error.message || 'Erro ao salvar os dados do responsável',
         isSubmitting: false,
       });
       throw error;

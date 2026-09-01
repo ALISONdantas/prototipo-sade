@@ -7,8 +7,10 @@ export interface ExamHistoryCardProps {
   status: string;
   createdAt: string;
   dependentName?: string;
+  retakeRequested?: boolean;
   onPress?: () => void;
   onRetry?: () => void;
+  onRetakeExam?: () => void;
   retrying?: boolean;
 }
 
@@ -46,12 +48,15 @@ export function ExamHistoryCard({
   status,
   createdAt,
   dependentName,
+  retakeRequested = false,
   onPress,
   onRetry,
+  onRetakeExam,
   retrying = false,
 }: ExamHistoryCardProps) {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.FAILED;
   const isFailed = status === 'FAILED';
+  const cardOnPress = retakeRequested ? undefined : onPress;
 
   const formattedDate = new Date(createdAt).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -62,12 +67,21 @@ export function ExamHistoryCard({
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={onPress}
-      activeOpacity={onPress ? 0.7 : 1}
-      disabled={!onPress}
+      onPress={cardOnPress}
+      activeOpacity={cardOnPress ? 0.7 : 1}
+      disabled={!cardOnPress}
     >
-      <View style={[styles.badge, { backgroundColor: config.bgColor }]}>
-        <Text style={[styles.badgeText, { color: config.color }]}>{config.letter}</Text>
+      <View
+        style={[
+          styles.badge,
+          { backgroundColor: retakeRequested ? colors.positiveLight : config.bgColor },
+        ]}
+      >
+        <Text
+          style={[styles.badgeText, { color: retakeRequested ? colors.positive : config.color }]}
+        >
+          {retakeRequested ? '!' : config.letter}
+        </Text>
       </View>
 
       <View style={styles.infoContainer}>
@@ -75,12 +89,20 @@ export function ExamHistoryCard({
           {formattedDate}
           {dependentName ? ` · ${dependentName}` : ''}
         </Text>
-        <Text style={[styles.summary, { color: config.color }]} numberOfLines={1}>
-          {config.summary}
+        <Text
+          style={[styles.summary, { color: retakeRequested ? colors.positive : config.color }]}
+          numberOfLines={1}
+        >
+          {retakeRequested ? 'Profissional pediu para refazer o exame' : config.summary}
         </Text>
       </View>
 
-      {isFailed ? (
+      {retakeRequested ? (
+        <TouchableOpacity style={styles.retakeButton} onPress={onRetakeExam}>
+          <RotateCw size={14} color={colors.positive} />
+          <Text style={styles.retakeText}>Refazer</Text>
+        </TouchableOpacity>
+      ) : isFailed ? (
         <TouchableOpacity style={styles.retryButton} onPress={onRetry} disabled={retrying}>
           <RotateCw size={14} color={colors.primary} />
           <Text style={styles.retryText}>{retrying ? 'Enviando...' : 'Reenviar'}</Text>
@@ -138,6 +160,20 @@ const styles = StyleSheet.create({
   retryText: {
     ...typography.label,
     color: colors.primary,
+    marginLeft: 4,
+  },
+  retakeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.positive,
+  },
+  retakeText: {
+    ...typography.label,
+    color: colors.positive,
     marginLeft: 4,
   },
 });

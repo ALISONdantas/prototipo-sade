@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SelectTesteeScreen from '../screens/Exam/SelectTesteeScreen';
 import PatientPickerScreen from '../screens/Exam/PatientPickerScreen';
 import HealthHistoryScreen from '../screens/Exam/HealthHistoryScreen';
+import GuardianInfoScreen from '../screens/Exam/GuardianInfoScreen';
 import AdamsTutorialScreen from '../screens/Exam/AdamsTutorialScreen';
 import CameraScreen from '../screens/Exam/CameraScreen';
 import AILoadingScreen from '../screens/Exam/AILoadingScreen';
@@ -22,6 +23,10 @@ export type ExamStackParamList = {
   SelectTestee: undefined;
   PatientPicker: undefined;
   HealthHistory: ExamTestee;
+  // Só entra no fluxo quando o exame é feito por Profissional/Instituição
+  // (patientId) — o Usuário testando um dependente não passa por essa etapa
+  // (ver HealthHistoryScreen.handleNext).
+  GuardianInfo: { patientName?: string };
   AdamsTutorial: undefined;
   Camera: undefined;
   AILoading: { examId: string; imageUri?: string };
@@ -37,6 +42,7 @@ export default function ExamStack() {
       <Stack.Screen name="SelectTestee" component={SelectTesteeScreen} />
       <Stack.Screen name="PatientPicker" component={PatientPickerScreen} />
       <Stack.Screen name="HealthHistory" component={HealthHistoryScreen} />
+      <Stack.Screen name="GuardianInfo" component={GuardianInfoScreen} />
       <Stack.Screen name="AdamsTutorial" component={AdamsTutorialScreen} />
       <Stack.Screen
         name="Camera"

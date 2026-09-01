@@ -106,7 +106,10 @@ export default function ProfessionalDashboard() {
   const navigation = useNavigation<NavigationProp>();
   const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'Profissional';
   const sharedExams = examHistory.filter(
-    (exam) => (exam.status === 'POSITIVE' || exam.status === 'NEGATIVE') && !exam.evaluation,
+    (exam) =>
+      (exam.status === 'POSITIVE' || exam.status === 'NEGATIVE') &&
+      !exam.evaluation &&
+      !exam.retake,
   );
   const definitiveExams = examHistory.filter(
     (exam) => exam.status === 'POSITIVE' || exam.status === 'NEGATIVE',

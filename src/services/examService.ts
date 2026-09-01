@@ -49,14 +49,27 @@ export interface ExamResponse {
   has_pain: boolean;
   had_surgery: boolean;
   surgery_detail?: string;
+  // Só coletado quando o exame é feito por Profissional/Instituição em um
+  // paciente (ver GuardianInfoScreen) — sem contrato real no backend ainda,
+  // fica só no mock local.
+  guardian_name?: string;
+  guardian_cpf?: string;
+  guardian_birth_date?: string;
+  guardian_relationship?: string;
   created_at: string;
   evaluation?: ExamEvaluation;
+  retake?: ExamRetakeRequest;
 }
 
 export interface ExamEvaluation {
   opinion: string;
   agreesWithAi: boolean;
   evaluatedAt: string;
+}
+
+export interface ExamRetakeRequest {
+  reason: string;
+  requestedAt: string;
 }
 
 function buildDraftResponse(
@@ -176,6 +189,27 @@ let mockExamHistory: ExamResponse[] = [
     created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
   },
   {
+    // Paciente do Profissional (id_patient real, ver patientsService) que já
+    // passou por um exame antes — usado para demonstrar o pré-preenchimento
+    // dos dados do responsável na tela de Responsável (GuardianInfoScreen).
+    id: 'mock-exam-pat-1',
+    id_patient: 'pat-1',
+    dependent_name: 'Ana Silva',
+    status: 'NEGATIVE',
+    age: 12,
+    sex: 'F',
+    weight_kg: 38,
+    height_cm: 148,
+    family_history: false,
+    has_pain: false,
+    had_surgery: false,
+    guardian_name: 'Carlos Silva',
+    guardian_cpf: '111.222.333-44',
+    guardian_birth_date: '10/05/1985',
+    guardian_relationship: 'Pai',
+    created_at: new Date(Date.now() - 60 * 86400000).toISOString(),
+  },
+  {
     id: 'mock-exam-3',
     id_patient: 'mock-patient-id',
     status: 'INCONCLUSIVE',
@@ -223,6 +257,20 @@ export const getLastExamForDependent = async (
   return dependentExams[0] ?? null;
 };
 
+// Paciente do Profissional/Instituição que já fez exame antes já tem um
+// responsável cadastrado (ver GuardianInfoScreen) — pré-preenche com o mais
+// recente, excluindo o rascunho atual (ainda sem dados de responsável).
+export const getLastExamForPatient = async (
+  patientId: string,
+  excludeExamId?: string,
+): Promise<ExamResponse | null> => {
+  const history = await getExamHistory();
+  const patientExams = history
+    .filter((exam) => exam.id_patient === patientId && exam.id !== excludeExamId)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return patientExams[0] ?? null;
+};
+
 export const retryExam = async (examId: string): Promise<{ status: string }> => {
   try {
     const response = await api.post<{ status: string }>(`/exams/${examId}/retry`);
@@ -244,10 +292,63 @@ export const evaluateExam = async (
       opinion: payload.opinion,
       agrees_with_ai: payload.agreesWithAi,
     });
-    return evaluation;
   } catch (error: any) {
     // Endpoint ainda não existe no backend — o parecer fica registrado só localmente.
     console.warn('Mocking evaluateExam (Backend endpoint missing)', error?.message);
-    return evaluation;
+  }
+  // Persiste no mock local (não só no estado da store) para sobreviver a um
+  // novo fetchExamHistory() — sem isso, o exame reaparecia na fila de
+  // "para avaliar" ao trocar de tela e recarregar o histórico.
+  const exam = mockExamHistory.find((e) => e.id === examId);
+  if (exam) exam.evaluation = evaluation;
+  return evaluation;
+};
+
+// Profissional pede para o paciente/dependente refazer o exame (ex.: foto
+// com qualidade ruim, ângulo incorreto) em vez de emitir um parecer sobre o
+// resultado atual — endpoint ainda não existe no backend, fica só no mock.
+export const requestExamRetake = async (
+  examId: string,
+  reason: string,
+): Promise<ExamRetakeRequest> => {
+  const retake: ExamRetakeRequest = { reason, requestedAt: new Date().toISOString() };
+  try {
+    await api.post(`/exams/${examId}/retake`, { reason });
+  } catch (error: any) {
+    console.warn('Mocking requestExamRetake (Backend endpoint missing)', error?.message);
+  }
+  const exam = mockExamHistory.find((e) => e.id === examId);
+  if (exam) exam.retake = retake;
+  return retake;
+};
+
+export interface ExamGuardianPayload {
+  name: string;
+  cpf: string;
+  birthDate: string;
+  relationship: string;
+}
+
+export const updateExamGuardian = async (
+  examId: string,
+  guardian: ExamGuardianPayload,
+): Promise<void> => {
+  try {
+    await api.post(`/exams/${examId}/guardian`, {
+      name: guardian.name,
+      cpf: guardian.cpf,
+      birth_date: guardian.birthDate,
+      relationship: guardian.relationship,
+    });
+  } catch (error: any) {
+    // Endpoint ainda não existe no backend — dado do responsável fica só localmente.
+    console.warn('Mocking updateExamGuardian (Backend endpoint missing)', error?.message);
+  }
+  const exam = mockExamHistory.find((e) => e.id === examId);
+  if (exam) {
+    exam.guardian_name = guardian.name;
+    exam.guardian_cpf = guardian.cpf;
+    exam.guardian_birth_date = guardian.birthDate;
+    exam.guardian_relationship = guardian.relationship;
   }
 };

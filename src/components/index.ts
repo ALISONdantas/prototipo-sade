@@ -6,6 +6,7 @@ export * from './AddDependentBottomSheet';
 export * from './AddPatientBottomSheet';
 export * from './AddUnitBottomSheet';
 export * from './DeleteDependentModal';
+export * from './RequestRetakeModal';
 export * from './ErrorState';
 export * from './MetricCard';
 export * from './ConsentCheckbox';
